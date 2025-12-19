@@ -1,3 +1,4 @@
+from telegram import Update
 from typing import Final
 import logging
 import re
@@ -11,9 +12,9 @@ from telegram.ext import (
     filters
 )
 
-from bot_utils import constants
+from src.bot_utils import types
 from bot_utils import handlers
-from bot_utils import helpers
+from src.bot_utils import database, dynamic_data
 
 # Logging config
 logging.basicConfig(
@@ -54,7 +55,7 @@ admin_conv_handler = ConversationHandler(
     },
     fallbacks=[MessageHandler(filters=filters.TEXT,
                               callback=handlers.admin_menu_fallback)],
-    map_to_parent={constants.Action.MAIN_MENU: constants.Action.MAIN_MENU},
+    map_to_parent={types.Action.MAIN_MENU: types.Action.MAIN_MENU},
     name="Admin panel handler",
     persistent=True
 )
@@ -62,28 +63,28 @@ admin_conv_handler = ConversationHandler(
 question_conv_handler = ConversationHandler(
     entry_points=[MessageHandler(filters=filters.Regex(
                     pattern="^" +
-                    re.escape(constants.MainKeyboardOptions.QUESTION)+"$"),
+                    re.escape(types.MainKeyboardOptions.QUESTION)+"$"),
                     callback=handlers.question_menu)],
     states={
-        constants.Action.QUESTION_MENU: [
+        types.Action.QUESTION_MENU: [
             CallbackQueryHandler(handlers.question_callback_query),
         ],
-        constants.Action.RETURN_TO_QUESTION_MENU: [
+        types.Action.RETURN_TO_QUESTION_MENU: [
             CallbackQueryHandler(handlers.question_menu_callback_query)
         ],
-        constants.Action.EXPERT_MENU: [
+        types.Action.EXPERT_MENU: [
             CallbackQueryHandler(handlers.expert_selected),
         ],
-        constants.Action.CHOOSE_QUESTION: [
+        types.Action.CHOOSE_QUESTION: [
             CallbackQueryHandler(handlers.view_message_callback_query),
         ],
-        constants.Action.QUESTION: [
+        types.Action.QUESTION: [
             MessageHandler(filters=filters.TEXT, callback=handlers.question),
         ],
     },
     fallbacks=[MessageHandler(filters=filters.TEXT,
                               callback=handlers.questions_menu_fallback)],
-    map_to_parent={constants.Action.MAIN_MENU: constants.Action.MAIN_MENU},
+    map_to_parent={types.Action.MAIN_MENU: types.Action.MAIN_MENU},
     name="Questions handler",
     persistent=True
 )
@@ -92,22 +93,22 @@ conv_handler = ConversationHandler(
     entry_points=[MessageHandler(filters=filters.TEXT,
                                  callback=handlers.start)],
     states={
-        constants.Action.MAIN_MENU: [
+        types.Action.MAIN_MENU: [
             question_conv_handler,
             MessageHandler(
                 filters=filters.Regex(
-                    pattern="^"+re.escape(constants.MainKeyboardOptions.FAQ)
+                    pattern="^"+re.escape(types.MainKeyboardOptions.FAQ)
                     + "$"),
                 callback=handlers.faq),
             MessageHandler(
                 filters=filters.Regex(
-                    pattern="^"+re.escape(constants.MainKeyboardOptions.EVENTS)
+                    pattern="^"+re.escape(types.MainKeyboardOptions.EVENTS)
                     + "$"),
                 callback=handlers.events),
             MessageHandler(
                 filters=filters.Regex(
                     pattern="^" +
-                    re.escape(constants.MainKeyboardOptions.SOCIALS)
+                    re.escape(types.MainKeyboardOptions.SOCIALS)
                     + "$"),
                 callback=handlers.socials),
         ],
@@ -123,19 +124,19 @@ if __name__ == "__main__":
     # Bot setup
     logging.info("Starting up")
 
-    helpers.setup_sqlite_db(logger)
-    helpers.load_dynamic_data(str(constants.FileNames.DEFAULTS))
-    print(constants.dynamic_data.data)
-    helpers.save_dynamic_data("defaults2.json")
+    database.setup_sqlite_db(logger)
+    dynamic_data.load(str(types.FileNames.DEFAULTS))
+    print(dynamic_data.dynamic.data)
+    dynamic_data.dump(str(types.FileNames.DEFAULTS))
 
-    persistence = PicklePersistence(filepath=constants.FileNames.PERSISTENCE)
+    persistence = PicklePersistence(filepath=types.FileNames.PERSISTENCE)
     app = Application.builder().token(TOKEN).persistence(persistence).build()
 
     app.add_handler(conv_handler)
     # Not adding default error handler because no error handling is needed
 
     logging.info("Beginning to poll")
-    # app.run_polling(
-    #     poll_interval=0.1,
-    #     allowed_updates=Update.ALL_TYPES,
-    # )
+    app.run_polling(
+        poll_interval=0.1,
+        allowed_updates=Update.ALL_TYPES,
+    )

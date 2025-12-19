@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import sqlite3
 from uuid import uuid4, UUID
 from datetime import datetime
 from typing import Final
@@ -9,7 +8,7 @@ import string
 from telegram import User
 import bcrypt
 
-from bot_utils import constants
+from src.bot_utils import types
 
 
 @dataclass
@@ -22,17 +21,6 @@ class Question:
     answered_date: datetime | None
     message: str
 
-    def __conform__(self, protocol):
-        if protocol == sqlite3.PrepareProtocol:
-            return (
-                str(self.uuid),
-                self.asked_by.id,
-                self.asked_date,
-                self.department_id,
-                self.answered_by.id if self.answered_by else "NULL",
-                self.answered_date if self.answered_date else "NULL",
-                self.message)
-
 
 @dataclass
 class Admin:
@@ -41,15 +29,6 @@ class Admin:
     telegram_user: User | None
     password_hash: str
     is_super: Final[bool]
-
-    def __conform__(self, protocol):
-        if protocol == sqlite3.PrepareProtocol:
-            return (
-                str(self.uuid),
-                self.public_name,
-                self.telegram_user.id if self.telegram_user else "NULL",
-                self.password_hash,
-                self.is_super,)
 
 
 class AdminFactory:
@@ -68,8 +47,8 @@ class AdminFactory:
 
     def generate_admin_password() -> str:
         return AdminFactory.generate_alphanumeric_password(
-            constants.PasswordFormat.PARTS,
-            constants.PasswordFormat.PART_LENGTH)
+            types.PasswordFormat.PARTS,
+            types.PasswordFormat.PART_LENGTH)
 
     def __new_admin(name: str, password: str, is_super: bool) -> Admin:
         return Admin(uuid=uuid4(),
