@@ -4,5 +4,6 @@
 
 config.ini
 persistence*
+*.json*
 *.bin*
 *.ipynb

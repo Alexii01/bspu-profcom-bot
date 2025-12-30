@@ -1,5 +1,5 @@
-from enum import Enum
 import sqlite3
+from typing import Iterable
 
 from telegram.ext import ContextTypes
 from telegram import (
@@ -8,24 +8,18 @@ from telegram import (
     InlineKeyboardMarkup,
     )
 
-from src.bot_utils import types
+from bot_utils import types
+from bot_utils.handlers import persistent_dynamic
 
 
-# TODO: Add keyboards here for access, make the functions refer to them
-# Keyboards:
-# - main keyboard
-# - questions keyboard
-# - deparatments keyboard
-
-
-def generate_reply_keyboard(keyboard_options: Enum):
+def generate_reply_keyboard(keyboard_options: Iterable[str]):
     return ReplyKeyboardMarkup(
         keyboard=[[item] for item in keyboard_options],
         one_time_keyboard=True,
         is_persistent=True)
 
 
-def generate_inline_keyboard(keyboard_options: Enum):
+def generate_inline_keyboard(keyboard_options: Iterable[str]):
     options_list = list(keyboard_options)
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -33,6 +27,20 @@ def generate_inline_keyboard(keyboard_options: Enum):
                 text=str(item),
                 callback_data=options_list.index(item))
              ] for item in keyboard_options])
+
+
+def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
+    options_list = list(keyboard_options)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(
+                text=str(item),
+                callback_data=options_list.index(item))
+             ] for item in keyboard_options] +
+            [[InlineKeyboardButton(
+                text=persistent_dynamic.get("buttons.go_back"),
+                callback_data=types.GO_BACK_CODE
+            )]])
 
 
 def generate_users_message_keyboard(
@@ -48,11 +56,11 @@ def generate_users_message_keyboard(
 
     connection.close()
 
-    user_messages_uuids = context.user_data[types.Keywords.QUESTIONS]
+    user_messages_uuids = context.user_data[types.BotMemory.QUESTIONS]
     messages_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="".join(context.bot_data[types.Keywords.QUESTIONS]
+                text="".join(context.bot_data[types.BotMemory.QUESTIONS]
                              [uuid].message[:3]), callback_data=str(uuid))]
             for uuid in user_messages_uuids])
 

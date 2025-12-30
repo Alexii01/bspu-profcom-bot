@@ -6,10 +6,9 @@ from telegram import constants as TelegramConstants
 from telegram.ext import (
     ContextTypes)
 
-import src.bot_utils.types as types
 from bot_utils.models import Question
-from src.bot_utils import keyboards
-
+from bot_utils import database, types
+from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 
 # TODO: Update to work with the rest of the updates
 
@@ -23,9 +22,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     logging.debug("Started convo with user %d", update.effective_user.id)
     await update.message.reply_text(
-        text=types.dynamic.data['text']['first_bot_message'],
-        reply_markup=types.MAIN_KEYBOARD
+        text=persistent_dynamic.get("text.first_bot_message"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.MAIN_MENU],
     )
+
     return types.Action.MAIN_MENU
 
 
@@ -35,8 +36,9 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     logging.debug("%d: FAQ", update.effective_user.id)
     await update.message.reply_text(
-        text=types.Strings.FAQ,
-        reply_markup=types.MAIN_KEYBOARD,
+        text=persistent_dynamic.get("text.show_faq"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.MAIN_MENU],
         parse_mode=TelegramConstants.ParseMode.HTML
     )
     return types.Action.MAIN_MENU
@@ -48,8 +50,9 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     logging.debug("%d: Events/Invite us", update.effective_user.id)
     await update.message.reply_text(
-        text=types.Strings.EVENTS,
-        reply_markup=types.MAIN_KEYBOARD
+        text=persistent_dynamic.get("text.show_events"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.MAIN_MENU],
     )
     return types.Action.MAIN_MENU
 
@@ -60,21 +63,23 @@ async def socials(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     logging.debug("%d: Socials", update.effective_user.id)
     await update.message.reply_text(
-        text=types.Strings.SOCIALS,
-        reply_markup=types.MAIN_KEYBOARD
+        text=persistent_dynamic.get("text.show_socials"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.MAIN_MENU],
     )
     return types.Action.MAIN_MENU
 
 
-async def question_menu(update: Update,
-                        context: ContextTypes.DEFAULT_TYPE) -> int:
+async def questions_menu(update: Update,
+                         context: ContextTypes.DEFAULT_TYPE) -> int:
     """Gives user access to menus within """
     del context
 
     logging.debug("%d: Question menu", update.effective_user.id)
     await update.message.reply_text(
-        text=types.Strings.QUESTION_MENU,
-        reply_markup=types.QUESTIONS_KEYBOARD
+        text=persistent_dynamic.get("text.questions_menu"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.QUESTION_MENU]
     )
     return types.Action.QUESTION_MENU
 
@@ -85,36 +90,39 @@ async def question_callback_query(update: Update,
     query = update.callback_query
     await query.answer()
 
-    if (int(query.data) == types.GO_BACK_CALLBACK_DATA):
+    if (int(query.data) == types.GO_BACK_CODE):
         # TODO: Add an (OK) button such that the message can be edited,
         # TODO: but the user can still read the message
         await query.edit_message_text(
-            text=types.Strings.QUESTION_MENU)
-        if (types.Strings.MAIN_MENU):
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=types.Strings.MAIN_MENU,
-                reply_markup=types.MAIN_KEYBOARD
-            )
+            text=persistent_dynamic.get("buttons.go_back"))
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=persistent_dynamic.get("text.return_to_main_menu"),
+            reply_markup=runtime_dynamic.get(
+                "keyboards")[types.Keyboards.MAIN_MENU]
+        )
         return types.Action.MAIN_MENU
 
     logger.debug("%d: Question query %s", update.effective_user.id, query.data)
 
-    match types.QuestionsList[int(query.data)]:
-        case types.QuestionsKeyboardOptions.ASK_QUESTION:
+    match runtime_dynamic.get("keyboards.lists")[types.Keyboards.QUESTION_MENU][int(query.data)]:
+        case button if button == persistent_dynamic.get("buttons.questions_menu.ask_question"):
             await query.edit_message_text(
-                text=types.Strings.EXPERTS,
-                reply_markup=types.EXPERT_KEYBOARD)
+                text=persistent_dynamic.get("text.see_departments"),
+                reply_markup=runtime_dynamic.get(
+                    "keyboards")[types.Keyboards.DEPARTMENTS])
             return types.Action.EXPERT_MENU
-        case types.QuestionsKeyboardOptions.SEE_QUESTIONS:
-            keyboard = keyboards.generate_users_message_keyboard(context)
-            await query.edit_message_text(
-                text=types.Strings.VIEW_QUESTIONS,
-                reply_markup=keyboard)
-            return types.Action.CHOOSE_QUESTION
+        case  button if button == persistent_dynamic.get("buttons.questions_menu.see_questions"):
+            # keyboard = keyboards_gen.generate_users_message_keyboard(context)
+            # await query.edit_message_text(
+            #     text=types.Strings.VIEW_QUESTIONS,
+            #     reply_markup=keyboard)
+            # return types.Action.CHOOSE_QUESTION
+            return types.Action.EXPERT_MENU
 
 
-async def question_menu_callback_query(
+async def questions_menu_callback_query(
         update: Update,
         context: ContextTypes.DEFAULT_TYPE) -> int:
     del context
@@ -126,8 +134,10 @@ async def question_menu_callback_query(
                  update.effective_user.id)
 
     query.edit_message_text(
-        text=types.Strings.QUESTION_MENU,
-        reply_markup=types.QUESTIONS_KEYBOARD)
+        text=persistent_dynamic.get("text.questions_menu"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.QUESTION_MENU]
+    )
 
     return types.Action.QUESTION_MENU
 
@@ -140,18 +150,19 @@ async def expert_selected(update: Update,
 
     logger.debug("%d: Expert query %s", update.effective_user.id, query.data)
 
-    if (int(query.data) == types.GO_BACK_CALLBACK_DATA):
-        await query.edit_message_text(
-            text=types.Strings.QUESTION_MENU,
-            reply_markup=types.QUESTIONS_KEYBOARD)
-
+    if (int(query.data) == types.GO_BACK_CODE):
+        await update.message.reply_text(
+            text=persistent_dynamic.get("text.questions_menu"),
+            reply_markup=runtime_dynamic.get(
+                "keyboards")[types.Keyboards.QUESTION_MENU]
+        )
         return types.Action.QUESTION_MENU
 
-    match types.ExpertsList[int(query.data)]:
+    match runtime_dynamic.get("keyboards.lists")[types.Keyboards.DEPARTMENTS][int(query.data)]:
         case expert:
-            context.chat_data[types.Keywords.SELECTED_EXPERT] = expert
+            context.chat_data[types.BotMemory.SELECTED_EXPERT] = expert
             await query.edit_message_text(
-                text=types.Strings.ASK_QUESTION)
+                text=persistent_dynamic.get("text.now_ask_question"))
             return types.Action.QUESTION
 
 
@@ -160,9 +171,10 @@ async def view_message_callback_query(
     del context
 
     logging.debug("%d: Question menu", update.effective_user.id)
-    await update.callback_query.edit_message_text(
-        text=types.Strings.QUESTION_MENU,
-        reply_markup=types.QUESTIONS_KEYBOARD
+    await update.message.reply_text(
+        text=persistent_dynamic.get("text.questions_menu"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.QUESTION_MENU]
     )
     return types.Action.QUESTION_MENU
 
@@ -172,14 +184,13 @@ async def question(update: Update,
     """Parses and saves user's question, sending them back to question menu"""
 
     if (len(update.message.text) < 20):
-        # TODO: Add an (OK) button such that the message can be edited,
-        # TODO: but the user can still read the message
-
         await update.message.reply_text(
-            text=types.Strings.QUESTION_TOO_SHORT + "\n\n"
-            + types.Strings.QUESTION_MENU,
-            reply_markup=types.QUESTIONS_KEYBOARD
-        )
+            text=persistent_dynamic.get("text.question_too_short"))
+        await update.message.reply_text(
+            text=persistent_dynamic.get("text.questions_menu"),
+            reply_markup=runtime_dynamic.get(
+                "keyboards")[types.Keyboards.QUESTION_MENU])
+
         return types.Action.QUESTION_MENU
 
     question = Question(
@@ -187,12 +198,12 @@ async def question(update: Update,
         asked_by=update.effective_user,
         asked_date=update.message.date,
         department_id=types.ExpertsList.index(
-            context.chat_data[types.Keywords.SELECTED_EXPERT]),
+            context.chat_data[types.BotMemory.SELECTED_EXPERT]),
         answered_by=None,
         answered_date=None,
         message=update.message.text)
 
-    keyboards.insert_quesion_into_db(question)
+    database.insert_quesion_into_db(question)
 
     logger.debug("%d: New question %s", question.asked_by.id, question.uuid)
 
@@ -207,20 +218,6 @@ async def question(update: Update,
     return types.Action.QUESTION_MENU
 
 
-async def back_to_main(update: Update,
-                       context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Takes user from question menu to main menu"""
-    del context
-
-    logging.debug("%d: Back to main", update.effective_user.id)
-    if (types.Strings.MAIN_MENU):
-        await update.message.reply_text(
-            text=types.Strings.MAIN_MENU,
-            reply_markup=types.MAIN_KEYBOARD
-        )
-    return types.Action.MAIN_MENU
-
-
 async def admin_login(update: Update,
                       context: ContextTypes.DEFAULT_TYPE) -> int:
     pass
@@ -233,8 +230,9 @@ async def main_menu_fallback(update: Update,
 
     logging.debug("%d: Main menu fallback", update.effective_user.id)
     await update.message.reply_text(
-        text=types.Strings.MAIN_MENU_FALLBACK,
-        reply_markup=types.MAIN_KEYBOARD
+        text=persistent_dynamic.get("text.main_menu_fallback"),
+        reply_markup=runtime_dynamic.get(
+                "keyboards")[types.Keyboards.MAIN_MENU]
     )
     return types.Action.MAIN_MENU
 
@@ -246,9 +244,10 @@ async def questions_menu_fallback(update: Update,
 
     logging.debug("%d: Questions fallback", update.effective_user.id)
     await update.message.reply_text(
-        text=types.Strings.QUESTIONS_MENU_FALLBACK,
-        reply_markup=types.QUESTIONS_KEYBOARD
-    )
+        text=persistent_dynamic.get("text.questions_menu_fallback"),
+        reply_markup=runtime_dynamic.get(
+            "keyboards")[types.Keyboards.QUESTION_MENU])
+
     return types.Action.QUESTION_MENU
 
 
@@ -260,6 +259,7 @@ async def admin_menu_fallback(update: Update,
     logging.debug("%d: Admin menu fallback", update.effective_user.id)
     await update.message.reply_text(
         text=types.Strings.ADMIN_MENU_FALLBACK,
-        reply_markup=types.MAIN_KEYBOARD
+        reply_markup=runtime_dynamic.get(
+                "keyboards")[types.Keyboards.MAIN_MENU]
     )
     return types.Action.MAIN_MENU

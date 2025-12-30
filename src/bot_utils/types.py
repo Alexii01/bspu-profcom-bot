@@ -57,36 +57,7 @@ from enum import Enum, IntEnum, StrEnum, auto
 # - GitHub pages
 # - Google Colab (Jupyter Notebook integration?)
 
-ExpectedImportedDynamicDataStructure = {
-  "text": {
-    "first_bot_message": {},
-    "return_to_main_menu": {},
-    "show_faq": {},
-    "show_events": {},
-    "show_socials": {},
-    "question_menu": {},
-    "view_user_questions": {},
-    "see_departments": {},
-    "now_ask_question": {},
-    "question_too_short": {},
-    "thanks_for_question": {},
-    "main_menu_fallback": {},
-    "questions_menu_fallback": {}
-  },
-  "buttons": {
-    "faq": {},
-    "events": {},
-    "socials": {},
-    "question": {},
-    "ask_question": {},
-    "see_questions": {}
-  },
-  "departments": {
-    "1": {},
-    "2": {},
-    "3": {}
-  }
-}
+GO_BACK_CODE = -1
 
 
 class Action (Enum):
@@ -98,13 +69,19 @@ class Action (Enum):
     QUESTION = auto()
 
 
+class Keyboards(Enum):
+    MAIN_MENU = auto()
+    QUESTION_MENU = auto()
+    DEPARTMENTS = auto()
+
+
+class BotMemory(IntEnum):
+    SELECTED_EXPERT = auto()
+
+
 class PasswordFormat(IntEnum):
     PARTS = 3
     PART_LENGTH = 6
-
-
-class Keywords(IntEnum):
-    SELECTED_EXPERT = auto()
 
 
 class DatabaseTables(StrEnum):
@@ -113,6 +90,7 @@ class DatabaseTables(StrEnum):
 
 
 class FileNames(StrEnum):
+    CONFIG = "config.ini"
     PERSISTENCE = "persistence.bin"
     DEFAULTS = "defaults.json"
     DB = "data.db"

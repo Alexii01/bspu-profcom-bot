@@ -1,8 +1,7 @@
 import sqlite3
 from logging import Logger
 
-import src.bot_utils.types as types
-import models
+from bot_utils import types, models
 
 
 def insert_quesion(question: models.Question):
@@ -51,7 +50,7 @@ def table_exists(cursor: sqlite3.Cursor, table_name: str):
         (table_name,)).fetchone())
 
 
-def create_questions_table(cursor: sqlite3.Cursor):
+def __create_questions_table(cursor: sqlite3.Cursor):
     cursor.execute(
         """CREATE TABLE {} (uuid, asked_by, asked_date,"""
         """ department_id, answered_by, answered_date, message)"""
@@ -61,12 +60,12 @@ def create_questions_table(cursor: sqlite3.Cursor):
 def __create_questions_table_if_not_present(cursor: sqlite3.Cursor,
                                             logger: Logger):
     if not table_exists(cursor, types.DatabaseTables.QUESTIONS):
-        create_questions_table(cursor)
+        __create_questions_table(cursor)
         logger.info("sqlite: Table '{}' not found, new table created."
                     .format(types.DatabaseTables.QUESTIONS))
 
 
-def create_admins_table(cursor: sqlite3.Cursor):
+def __create_admins_table(cursor: sqlite3.Cursor):
     cursor.execute(
         """CREATE TABLE {} (uuid PRIMARY KEY, public_name TEXT,
         telegram_user INT, password_hash BLOB, is_super INT);"""
@@ -76,12 +75,12 @@ def create_admins_table(cursor: sqlite3.Cursor):
 def __create_admins_table_if_not_present(cursor: sqlite3.Cursor,
                                          logger: Logger):
     if not table_exists(cursor, types.DatabaseTables.ADMINS):
-        create_admins_table(cursor)
+        __create_admins_table(cursor)
         logger.info("sqlite: Table '{}' not found, new table created"
                     .format(types.DatabaseTables.ADMINS))
 
 
-def super_admin_exists(cursor: sqlite3.Cursor):
+def __super_admin_exists(cursor: sqlite3.Cursor):
     return bool(cursor.execute(
         """SELECT uuid FROM {} WHERE is_super=?;"""
         .format(types.DatabaseTables.ADMINS),
@@ -90,7 +89,7 @@ def super_admin_exists(cursor: sqlite3.Cursor):
 
 def __create_super_admin_if_not_present(cursor: sqlite3.Cursor,
                                         logger: Logger):
-    if not super_admin_exists(cursor):
+    if not __super_admin_exists(cursor):
         # Create super admin
         password = models.AdminFactory.generate_admin_password()
         su = models.AdminFactory.new_super_admin("su", password)

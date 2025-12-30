@@ -8,7 +8,7 @@ import string
 from telegram import User
 import bcrypt
 
-from src.bot_utils import types
+from bot_utils import types
 
 
 @dataclass
