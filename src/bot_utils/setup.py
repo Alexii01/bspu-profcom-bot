@@ -3,103 +3,106 @@ import re
 
 from telegram.ext import (
     CallbackQueryHandler,
+    CommandHandler,
     ConversationHandler,
     MessageHandler,
-    filters
 )
+from telegram.ext import filters as msg_filters
 
 from bot_utils import (
     keyboards_gen,
     types,
     database,
-    handlers
 )
+
+from bot_utils.menu_handlers import (
+    main_menu,
+    questions_menu,
+    admin_menu,
+)
+
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 
 
 def generate_conversation_handler():
     admin_conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters=filters.Regex(
-            "^Spooky scary skeletons sending shivers down your spine$"),
-                                    callback=handlers.admin_login)],
+        entry_points=[CommandHandler("admin", callback=admin_menu.init_login)],
         states={
-
+            types.AdminState.LOGIN: [
+                MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.login)
+            ]
         },
-        fallbacks=[MessageHandler(filters=filters.TEXT,
-                                  callback=handlers.admin_menu_fallback)],
-        map_to_parent={types.Action.MAIN_MENU: types.Action.MAIN_MENU},
+        fallbacks=[MessageHandler(filters=msg_filters.TEXT,
+                                  callback=admin_menu.fallback)],
+        map_to_parent={types.State.MAIN_MENU: types.State.MAIN_MENU},
         name="Admin panel handler",
         persistent=True
     )
-    del admin_conv_handler
     question_conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters=filters.Regex(
-                        pattern="^" +
-                        re.escape(persistent_dynamic.get(
-                                "buttons.main_menu.question"))
-                        + "$"),
-                        callback=handlers.questions_menu)],
+        entry_points=[MessageHandler(filters=msg_filters.Regex(
+                        pattern="^" + re.escape(persistent_dynamic.get("buttons.main_menu.question")) + "$"),
+                        callback=questions_menu.main)],
         states={
-            types.Action.QUESTION_MENU: [
-                CallbackQueryHandler(handlers.question_callback_query),
+            types.State.QUESTION_MENU: [
+                CallbackQueryHandler(questions_menu.main_callback),
             ],
-            types.Action.RETURN_TO_QUESTION_MENU: [
-                CallbackQueryHandler(handlers.questions_menu_callback_query)
+            types.State.DEPARTMENT_MENU: [
+                CallbackQueryHandler(questions_menu.department_selected),
             ],
-            types.Action.EXPERT_MENU: [
-                CallbackQueryHandler(handlers.expert_selected),
+            types.State.QUESTION_VIEW_MENU: [
+                CallbackQueryHandler(questions_menu.view_msg_callback),
             ],
-            types.Action.CHOOSE_QUESTION: [
-                CallbackQueryHandler(handlers.view_message_callback_query),
+            types.State.VIEWING_QUESTION: [
+                CallbackQueryHandler(questions_menu.questions_list_callback)
             ],
-            types.Action.QUESTION: [
-                MessageHandler(filters=filters.TEXT,
-                               callback=handlers.question),
+            types.State.ASKING_QUESTION: [
+                MessageHandler(filters=msg_filters.TEXT,
+                               callback=questions_menu.question),
             ],
         },
-        fallbacks=[MessageHandler(filters=filters.TEXT,
-                                  callback=handlers.questions_menu_fallback)],
-        map_to_parent={types.Action.MAIN_MENU: types.Action.MAIN_MENU},
+        fallbacks=[MessageHandler(filters=msg_filters.TEXT,
+                                  callback=questions_menu.fallback)],
+        map_to_parent={types.State.MAIN_MENU: types.State.MAIN_MENU},
         name="Questions handler",
         persistent=True
     )
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters=filters.TEXT,
-                                     callback=handlers.start)],
+        entry_points=[CommandHandler("start", callback=main_menu.start),
+                      CommandHandler("admin", callback=admin_menu.init_login)],
         states={
-            types.Action.MAIN_MENU: [
+            types.State.MAIN_MENU: [
+                admin_conv_handler,
                 question_conv_handler,
                 MessageHandler(
-                    filters=filters.Regex(
+                    filters=msg_filters.Regex(
                         pattern="^" +
-                        re.escape(
-                            persistent_dynamic.get("buttons.main_menu.faq")
-                            )
-                        + "$"),
-                    callback=handlers.faq),
+                        re.escape(persistent_dynamic.get("buttons.main_menu.faq")) + "$"),
+                    callback=main_menu.faq),
                 MessageHandler(
-                    filters=filters.Regex(
-                        pattern="^" +
-                        re.escape(
-                            persistent_dynamic.get("buttons.main_menu.events")
-                            )
-                        + "$"),
-                    callback=handlers.events),
+                    filters=msg_filters.Regex(
+                        pattern="^" + re.escape(persistent_dynamic.get("buttons.main_menu.events")) + "$"),
+                    callback=main_menu.events),
                 MessageHandler(
-                    filters=filters.Regex(
-                        pattern="^" +
-                        re.escape(
-                            persistent_dynamic.get("buttons.main_menu.socials")
-                            )
-                        + "$"),
-                    callback=handlers.socials),
+                    filters=msg_filters.Regex(
+                        pattern="^" + re.escape(persistent_dynamic.get("buttons.main_menu.socials")) + "$"),
+                    callback=main_menu.socials),
             ],
         },
-        fallbacks=[MessageHandler(filters=filters.TEXT,
-                                  callback=handlers.main_menu_fallback)],
+        fallbacks=[MessageHandler(filters=msg_filters.TEXT,
+                                  callback=main_menu.fallback)],
         name="my_conversation",
         persistent=True,
     )
+
+    # test_conversation_handler = ConversationHandler(
+    #     entry_points=[MessageHandler(filters=msg_filters.TEXT)],
+    #     states={
+    #         types.State.QUESTION_MENU: [MessageHandler(filters=msg_filters.TEXT)]
+    #     },
+    #     fallbacks=[]
+    # )
+    # del test_conversation_handler
+
     return conv_handler
 
 
@@ -114,12 +117,16 @@ def update_keyboards():
         types.Keyboards.DEPARTMENTS:
             keyboards_gen.generate_inline_keyboard_with_return(
                 persistent_dynamic.get("departments").values()),
+        types.Keyboards.VIEW_MESSAGE:
+            keyboards_gen.generate_inline_keyboard_with_return(
+                persistent_dynamic.get("buttons.view_question_menu").values()),
         "lists": {
             types.Keyboards.QUESTION_MENU:
-                list(persistent_dynamic.get(
-                    "buttons.questions_menu").values()),
+                list(persistent_dynamic.get("buttons.questions_menu").values()),
             types.Keyboards.DEPARTMENTS:
-                list(persistent_dynamic.get("departments").values())
+                list(persistent_dynamic.get("departments").values()),
+            types.Keyboards.VIEW_MESSAGE:
+                list(persistent_dynamic.get("buttons.view_question_menu").values())
             }
         }
 

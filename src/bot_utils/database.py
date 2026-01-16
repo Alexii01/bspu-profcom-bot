@@ -14,10 +14,8 @@ def insert_quesion(question: models.Question):
                     question.asked_by.id,
                     question.asked_date,
                     question.department_id,
-                    question.answered_by.id if question.answered_by
-                    else "NULL",
-                    question.answered_date if question.answered_date
-                    else "NULL",
+                    question.answered_by.id if question.answered_by else None,
+                    question.answered_date if question.answered_date else None,
                     question.message,))
 
     connection.close()
@@ -25,7 +23,7 @@ def insert_quesion(question: models.Question):
 
 def insert_admin_with_existing_cursor(cursor: sqlite3.Cursor,
                                       admin: models.Admin):
-    cursor.execute("INSERT INTO {} VALUES (?, ?, ?, ?, ?, ?, ?)"
+    cursor.execute("INSERT INTO {} VALUES (?, ?, ?, ?, ?)"
                    .format(types.DatabaseTables.ADMINS),
                    (str(admin.uuid),
                     admin.public_name,
@@ -112,3 +110,39 @@ def setup_sqlite_db(logger: Logger):
     __create_super_admin_if_not_present(cursor, logger)
 
     connection.close()
+
+
+def get_questions_from_user(user_id: int):
+    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
+    result = connection.cursor().execute(
+        "SELECT * FROM {} WHERE asked_by=?".format(
+            types.DatabaseTables.QUESTIONS), (user_id,)).fetchall()
+    connection.close()
+    return result
+
+
+def get_question_by_uuid(uuid: str):
+    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
+    result = connection.cursor().execute(
+        "SELECT * FROM {} WHERE uuid=?".format(
+            types.DatabaseTables.QUESTIONS), (uuid,)).fetchone()
+    connection.close()
+    return result
+
+
+def delete_question_by_uuid(uuid: str):
+    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
+    connection.cursor().execute(
+        "DELETE FROM {} WHERE uuid=?".format(
+            types.DatabaseTables.QUESTIONS), (uuid,))
+    connection.close()
+
+
+def authorise_admin(user_id: int, password: str):
+    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
+    result = connection.cursor().execute(
+        "SELECT * FROM {} WHERE telegram_user IS NULL OR telegram_user=?".format(
+            types.DatabaseTables.ADMINS), (user_id,)).fetchall()
+    connection.close()
+
+    print(password, user_id, result)

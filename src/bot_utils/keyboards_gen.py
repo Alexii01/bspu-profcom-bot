@@ -1,4 +1,3 @@
-import sqlite3
 from typing import Iterable
 
 from telegram.ext import ContextTypes
@@ -8,8 +7,8 @@ from telegram import (
     InlineKeyboardMarkup,
     )
 
-from bot_utils import types
-from bot_utils.handlers import persistent_dynamic
+from bot_utils import types, database
+from bot_utils.dynamic_data import persistent_dynamic
 
 
 def generate_reply_keyboard(keyboard_options: Iterable[str]):
@@ -47,21 +46,13 @@ def generate_users_message_keyboard(
         context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup | None:
     # TODO: Refactor, this is so damn old
 
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    cursor = connection.cursor()
+    questions = database.get_questions_from_user(context._user_id)
 
-    cursor.execute("SELECT * FROM {} WHERE asked_by=?"
-                   .format(types.DatabaseTables.QUESTIONS),
-                   (context._user_id))
-
-    connection.close()
-
-    user_messages_uuids = context.user_data[types.BotMemory.QUESTIONS]
     messages_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="".join(context.bot_data[types.BotMemory.QUESTIONS]
-                             [uuid].message[:3]), callback_data=str(uuid))]
-            for uuid in user_messages_uuids])
+                text=" ".join(question[6].split()[:5]),
+                callback_data=str(question[0]))]
+            for question in questions])
 
     return messages_keyboard

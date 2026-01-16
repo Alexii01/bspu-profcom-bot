@@ -60,23 +60,32 @@ from enum import Enum, IntEnum, StrEnum, auto
 GO_BACK_CODE = -1
 
 
-class Action (Enum):
+class State (Enum):
     MAIN_MENU = auto()
     QUESTION_MENU = auto()
-    RETURN_TO_QUESTION_MENU = auto()
-    EXPERT_MENU = auto()
-    CHOOSE_QUESTION = auto()
-    QUESTION = auto()
+    DEPARTMENT_MENU = auto()
+    QUESTION_VIEW_MENU = auto()
+    ASKING_QUESTION = auto()
+    VIEWING_QUESTION = auto()
+
+
+class AdminState (Enum):
+    LOGIN = auto()
+    MAIN_MENU = auto()
+    SETTINGS = auto()
+    CHANGING_TEXT = auto()
 
 
 class Keyboards(Enum):
     MAIN_MENU = auto()
     QUESTION_MENU = auto()
     DEPARTMENTS = auto()
+    VIEW_MESSAGE = auto()
 
 
 class BotMemory(IntEnum):
-    SELECTED_EXPERT = auto()
+    SELECTED_DEPARTMENT = auto()
+    VIEWED_MSG = auto()
 
 
 class PasswordFormat(IntEnum):
