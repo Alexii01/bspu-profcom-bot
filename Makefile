@@ -4,4 +4,4 @@ init:
 start:
 	(python src/__init__.py)
 
-.PHONY: init test
+.PHONY: init

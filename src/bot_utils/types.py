@@ -1,6 +1,4 @@
-
 from enum import Enum, IntEnum, StrEnum, auto
-
 
 # TODO: In questions use separate dates for when a question was asked and when
 # a question was answered
@@ -60,7 +58,8 @@ from enum import Enum, IntEnum, StrEnum, auto
 GO_BACK_CODE = -1
 
 
-class State (Enum):
+# TODO: Add QuestionState
+class State(Enum):
     MAIN_MENU = auto()
     QUESTION_MENU = auto()
     DEPARTMENT_MENU = auto()
@@ -69,7 +68,7 @@ class State (Enum):
     VIEWING_QUESTION = auto()
 
 
-class AdminState (Enum):
+class AdminState(Enum):
     LOGIN = auto()
     MAIN_MENU = auto()
     SETTINGS = auto()
@@ -81,11 +80,13 @@ class Keyboards(Enum):
     QUESTION_MENU = auto()
     DEPARTMENTS = auto()
     VIEW_MESSAGE = auto()
+    ADMIN_MENU = auto()
 
 
 class BotMemory(IntEnum):
     SELECTED_DEPARTMENT = auto()
     VIEWED_MSG = auto()
+    LOGGED_IN_AS = auto()
 
 
 class PasswordFormat(IntEnum):
@@ -94,8 +95,8 @@ class PasswordFormat(IntEnum):
 
 
 class DatabaseTables(StrEnum):
-    QUESTIONS = 'questions'
-    ADMINS = 'admins'
+    QUESTIONS = "questions"
+    ADMINS = "admins"
 
 
 class FileNames(StrEnum):

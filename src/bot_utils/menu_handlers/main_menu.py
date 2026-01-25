@@ -15,8 +15,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: Started convo with user", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.first_bot_message"),
-        reply_markup=runtime_dynamic.get(
-            "keyboards")[types.Keyboards.MAIN_MENU],
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
     )
     return types.State.MAIN_MENU
 
@@ -28,9 +27,8 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: FAQ", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.show_faq"),
-        reply_markup=runtime_dynamic.get(
-            "keyboards")[types.Keyboards.MAIN_MENU],
-        parse_mode=TelegramConstants.ParseMode.HTML
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
+        parse_mode=TelegramConstants.ParseMode.HTML,
     )
     return types.State.MAIN_MENU
 
@@ -42,8 +40,7 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: Events/Invite us", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.show_events"),
-        reply_markup=runtime_dynamic.get(
-            "keyboards")[types.Keyboards.MAIN_MENU],
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
     )
     return types.State.MAIN_MENU
 
@@ -55,8 +52,7 @@ async def socials(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: Socials", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.show_socials"),
-        reply_markup=runtime_dynamic.get(
-            "keyboards")[types.Keyboards.MAIN_MENU],
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
     )
     return types.State.MAIN_MENU
 
@@ -68,7 +64,6 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: Main menu fallback", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.main_menu_fallback"),
-        reply_markup=runtime_dynamic.get(
-                "keyboards")[types.Keyboards.MAIN_MENU]
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
     )
     return types.State.MAIN_MENU

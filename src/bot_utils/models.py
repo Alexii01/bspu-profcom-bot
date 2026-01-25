@@ -32,35 +32,37 @@ class Admin:
 
 
 class AdminFactory:
-
     def generate_alphanumeric_password(parts: int, part_length: int) -> str:
         alphabet = string.ascii_letters + string.digits
         output = ""
         for i in range(parts):
-            output += "".join(
-                [secrets.choice(alphabet) for _ in range(part_length)]
-                )
-            if (i != parts-1):
+            output += "".join([secrets.choice(alphabet) for _ in range(part_length)])
+            if i != parts - 1:
                 output += "-"
 
         return output
 
     def generate_admin_password() -> str:
         return AdminFactory.generate_alphanumeric_password(
-            types.PasswordFormat.PARTS,
-            types.PasswordFormat.PART_LENGTH)
+            types.PasswordFormat.PARTS, types.PasswordFormat.PART_LENGTH
+        )
 
     def __new_admin(name: str, password: str, is_super: bool) -> Admin:
-        return Admin(uuid=uuid4(),
-                     public_name=name,
-                     telegram_user=None,
-                     password_hash=bcrypt.hashpw(
-                         password.encode("ascii"),
-                         bcrypt.gensalt(rounds=15)),
-                     is_super=is_super)
+        return Admin(
+            uuid=uuid4(),
+            public_name=name,
+            telegram_user=None,
+            password_hash=bcrypt.hashpw(
+                password.encode("ascii"), bcrypt.gensalt(rounds=15)
+            ),
+            is_super=is_super,
+        )
 
     def new_super_admin(name: str, password: str) -> Admin:
         return AdminFactory.__new_admin(name, password, True)
 
-    def new_admin(name: str, password: str,) -> Admin:
+    def new_admin(
+        name: str,
+        password: str,
+    ) -> Admin:
         return AdminFactory.__new_admin(name, password, False)

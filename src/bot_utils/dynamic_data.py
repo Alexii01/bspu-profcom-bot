@@ -6,8 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class SharedDynamicDataClass:
-
-    def __init__(self, new_data: Dict[Any, Any]):
+    def __init__(self, new_data: Dict[Any, Any] | None = None):
         self.data = new_data
         self.cache = {}
 
@@ -19,26 +18,28 @@ class SharedDynamicDataClass:
         self.cache = {}
 
     def dump(self, filepath: str):
-        if not hasattr(self, "data"):
+        if self.data is None:
             return
 
         with open(file=filepath, mode="w", encoding="utf-8") as data_file:
-            json.dump(self.data, data_file, indent=2,
-                      ensure_ascii=False)
+            json.dump(self.data, data_file, indent=2, ensure_ascii=False)
 
     def get(self, key: str):
+        if self.data is None:
+            logger.error(f"Attempt to read from empty SharedDynamicDataClass {key}")
+
         if key in self.cache:
-            logger.debug(f"Retreived data from dynamic using cache ({key})")
+            logger.debug(f"Retrieved data from dynamic using cache ({key})")
             return self.cache[key]
 
-        path = key.split('.')
+        path = key.split(".")
         handle = self.data
 
         for step in path:
             try:
                 handle = handle[step]
             except KeyError:
-                raise KeyError(f"No key {step} from {path}")
+                raise KeyError(f"No key {step} from {key}")
 
         logger.debug(f"Retreived data from dynamic and added to cache ({key})")
         self.cache[key] = handle

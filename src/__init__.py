@@ -2,6 +2,7 @@ from telegram import Update
 from typing import Final
 import logging
 
+
 from telegram.ext import (
     Application,
     PicklePersistence,
@@ -15,7 +16,7 @@ from bot_utils import (
 
 # Logging config
 logging.basicConfig(
-    format='%(levelname)s: %(asctime)s - %(name)s - %(message)s',
+    format="%(levelname)s: %(asctime)s - %(name)s - %(message)s",
     level=logging.DEBUG,
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -35,9 +36,7 @@ logger = logging.getLogger(__name__)
 #   @examplebot
 with open(types.FileNames.CONFIG, encoding="utf-8") as config:
     data = config.read().splitlines(keepends=False)
-    data = [line for line in data if
-            (not line.startswith("#")) and
-            (not line == "")]
+    data = [line for line in data if (not line.startswith("#")) and (not line == "")]
 
     TOKEN: Final = data[0]
     BOT_USERNAME: Final = data[1]
@@ -57,7 +56,5 @@ if __name__ == "__main__":
 
     logging.info("Beginning to poll")
     app.run_polling(
-        poll_interval=0.1,
-        allowed_updates=Update.ALL_TYPES,
-        close_loop=False
+        poll_interval=0.1, allowed_updates=Update.ALL_TYPES, close_loop=False
     )
