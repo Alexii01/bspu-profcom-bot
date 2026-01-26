@@ -24,7 +24,7 @@ class Question:
 
 @dataclass
 class Admin:
-    uuid: UUID
+    uuid: UUID | str
     public_name: str
     telegram_user: User | None
     password_hash: str

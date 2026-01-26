@@ -1,10 +1,30 @@
+import logging
 import sqlite3
 import bcrypt
-from logging import Logger
+import functools
 
-from bot_utils import types, models
+from bot_utils import types, models, decorators
 
-# TODO: Add init_connection wrapper
+logger = logging.getLogger(__name__)
+
+
+def with_connection(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        connection = sqlite3.connect(types.FileNames.DB)
+        cursor = connection.cursor()
+        try:
+            result = func(cursor, *args, **kwargs)
+            connection.commit()
+        except Exception as e:
+            logging.error(f"{type(e).__name__: {e}}")
+            raise e
+        finally:
+            connection.close()
+
+        return result
+
+    return wrapper
 
 
 def insert_quesion(question: models.Question):
@@ -61,6 +81,11 @@ def table_exists(cursor: sqlite3.Cursor, table_name: str):
     )
 
 
+@decorators.define_log(
+    logger=logger,
+    begin="No questions table found, creating...",
+    end="Created questions table!",
+)
 def __create_questions_table(cursor: sqlite3.Cursor):
     cursor.execute(
         """CREATE TABLE {} (uuid, asked_by, asked_date,"""
@@ -70,16 +95,18 @@ def __create_questions_table(cursor: sqlite3.Cursor):
     )
 
 
-def __create_questions_table_if_not_present(cursor: sqlite3.Cursor, logger: Logger):
+def __create_questions_table_if_not_present(
+    cursor: sqlite3.Cursor, logger: logging.Logger
+):
     if not table_exists(cursor, types.DatabaseTables.QUESTIONS):
         __create_questions_table(cursor)
-        logger.info(
-            "sqlite: Table '{}' not found, new table created.".format(
-                types.DatabaseTables.QUESTIONS
-            )
-        )
 
 
+@decorators.define_log(
+    logger=logger,
+    begin="No admins table found, creating...",
+    end="Created questions table!",
+)
 def __create_admins_table(cursor: sqlite3.Cursor):
     cursor.execute(
         """CREATE TABLE {} (uuid PRIMARY KEY, public_name TEXT,
@@ -89,16 +116,18 @@ def __create_admins_table(cursor: sqlite3.Cursor):
     )
 
 
-def __create_admins_table_if_not_present(cursor: sqlite3.Cursor, logger: Logger):
+def __create_admins_table_if_not_present(
+    cursor: sqlite3.Cursor, logger: logging.Logger
+):
     if not table_exists(cursor, types.DatabaseTables.ADMINS):
         __create_admins_table(cursor)
-        logger.info(
-            "sqlite: Table '{}' not found, new table created".format(
-                types.DatabaseTables.ADMINS
-            )
-        )
 
 
+@decorators.conditional_log(
+    logger=logger,
+    if_true="Superuser admin exists",
+    if_false="No superuser admin exists!",
+)
 def __super_admin_exists(cursor: sqlite3.Cursor):
     return bool(
         cursor.execute(
@@ -110,7 +139,7 @@ def __super_admin_exists(cursor: sqlite3.Cursor):
     )
 
 
-def __create_super_admin_if_not_present(cursor: sqlite3.Cursor, logger: Logger):
+def __create_super_admin_if_not_present(cursor: sqlite3.Cursor, logger: logging.Logger):
     if not __super_admin_exists(cursor):
         # Create super admin
         password = models.AdminFactory.generate_admin_password()
@@ -122,59 +151,46 @@ def __create_super_admin_if_not_present(cursor: sqlite3.Cursor, logger: Logger):
         # Add to db
         insert_admin_with_existing_cursor(cursor, su)
         del su
-        logger.info("sqlite: Superuser admin created.")
+        logger.info("Superuser admin created!")
 
 
-def setup_sqlite_db(logger: Logger):
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    cursor = connection.cursor()
-
+@decorators.passthrough_log(
+    logger=logger, begin="Verifying database", end="Database setup verified"
+)
+@with_connection
+def setup_sqlite_db(cursor: sqlite3.Cursor, logger: logging.Logger):
     __create_questions_table_if_not_present(cursor, logger)
     __create_admins_table_if_not_present(cursor, logger)
     __create_super_admin_if_not_present(cursor, logger)
 
-    connection.close()
 
-
-def get_questions_from_user(user_id: int):
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    result = (
-        connection.cursor()
-        .execute(
-            "SELECT * FROM {} WHERE asked_by=?".format(types.DatabaseTables.QUESTIONS),
-            (user_id,),
-        )
-        .fetchall()
-    )
-    connection.close()
+@with_connection
+def get_questions_from_user(cursor: sqlite3.Cursor, user_id: int):
+    result = cursor.execute(
+        "SELECT * FROM {} WHERE asked_by=?".format(types.DatabaseTables.QUESTIONS),
+        (user_id,),
+    ).fetchall()
     return result
 
 
-def get_question_by_uuid(uuid: str):
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    result = (
-        connection.cursor()
-        .execute(
-            "SELECT * FROM {} WHERE uuid=?".format(types.DatabaseTables.QUESTIONS),
-            (uuid,),
-        )
-        .fetchone()
-    )
-    connection.close()
+@with_connection
+def get_question_by_uuid(cursor: sqlite3.Cursor, uuid: str):
+    result = cursor.execute(
+        "SELECT * FROM {} WHERE uuid=?".format(types.DatabaseTables.QUESTIONS),
+        (uuid,),
+    ).fetchone()
     return result
 
 
-def delete_question_by_uuid(uuid: str):
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    connection.cursor().execute(
+@with_connection
+def delete_question_by_uuid(cursor: sqlite3.Cursor, uuid: str):
+    cursor.execute(
         "DELETE FROM {} WHERE uuid=?".format(types.DatabaseTables.QUESTIONS), (uuid,)
     )
-    connection.close()
 
 
-def authorise_attempt(user_id: int) -> str | None:
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    cursor = connection.cursor()
+@with_connection
+def authorise_attempt(cursor: sqlite3.Cursor, user_id: int) -> str | None:
     result = cursor.execute(
         "SELECT * FROM {} WHERE telegram_user=?".format(types.DatabaseTables.ADMINS),
         (user_id,),
@@ -185,30 +201,54 @@ def authorise_attempt(user_id: int) -> str | None:
         return None
 
 
-def authorise_admin(user_id: int, password: str) -> str | None:
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    cursor = connection.cursor()
+@with_connection
+def authorise_admin(cursor: sqlite3.Cursor, user_id: int, password: str) -> str | None:
     results = cursor.execute(
         "SELECT * FROM {} WHERE telegram_user IS NULL".format(
             types.DatabaseTables.ADMINS
         ),
-        (user_id,),
     ).fetchall()
 
-    # TODO: Rewrite to make admins one-to-one
     for result in results:
-        if bcrypt.checkpw(password.encode("ascii"), result[3]):
+        result = models.Admin(
+            uuid=result[0],
+            public_name=result[1],
+            telegram_user=result[2],
+            password_hash=result[3],
+            is_super=result[4],
+        )
+        if bcrypt.checkpw(password.encode("ascii"), result.password_hash):
             cursor.execute(
                 "UPDATE {} SET telegram_user=? WHERE uuid=?".format(
                     types.DatabaseTables.ADMINS
                 ),
                 (
                     user_id,
-                    result[0],
+                    result.uuid,
                 ),
             )
-            connection.close()
-            return result[0]
-
-    connection.close()
+            return result.uuid
     return None
+
+
+@with_connection
+def is_admin_su(cursor: sqlite3.Cursor, uuid: str) -> bool:
+    result = cursor.execute(
+        "SELECT is_super FROM {} WHERE uuid=?".format(types.DatabaseTables.ADMINS),
+        (uuid,),
+    ).fetchone()
+    if result is None:
+        return False
+    else:
+        return result[0]
+
+
+@with_connection
+def update_admin_name(cursor: sqlite3.Cursor, name: str, uuid: str) -> bool:
+    cursor.execute(
+        "UPDATE {} SET public_name=? WHERE uuid=?".format(types.DatabaseTables.ADMINS),
+        (
+            name,
+            uuid,
+        ),
+    )

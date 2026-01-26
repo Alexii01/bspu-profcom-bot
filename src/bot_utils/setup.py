@@ -1,6 +1,8 @@
-from logging import Logger
+import logging
 import re
+from warnings import filterwarnings
 
+from telegram.warnings import PTBUserWarning
 from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
@@ -13,6 +15,7 @@ from bot_utils import (
     keyboards_gen,
     types,
     database,
+    decorators,
 )
 
 from bot_utils.menu_handlers import (
@@ -24,13 +27,33 @@ from bot_utils.menu_handlers import (
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 
 
+logger = logging.getLogger(__name__)
+filterwarnings(
+    action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning
+)
+
+
+@decorators.define_log(
+    logger=logger,
+    begin="Generating conversation handlers",
+    end="Finished generating conversation handlers!",
+)
 def generate_conversation_handler():
     admin_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("admin", callback=admin_menu.init_login)],
         states={
             types.AdminState.LOGIN: [
                 MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.login)
-            ]
+            ],
+            types.AdminState.MAIN_MENU: [
+                CallbackQueryHandler(admin_menu.main_menu_callback)
+            ],
+            types.AdminState.SETTINGS: [
+                CallbackQueryHandler(admin_menu.settings_callback)
+            ],
+            types.AdminState.ENTERING_NAME: [
+                CallbackQueryHandler(admin_menu.update_name)
+            ],
         },
         fallbacks=[
             MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.fallback)
@@ -130,6 +153,9 @@ def generate_conversation_handler():
     return conv_handler
 
 
+@decorators.define_log(
+    logger=logger, begin="Generating keyboards", end="Keyboards generated!"
+)
 def update_keyboards():
     runtime_dynamic.data["keyboards"] = {
         types.Keyboards.MAIN_MENU: keyboards_gen.generate_reply_keyboard(
@@ -144,6 +170,21 @@ def update_keyboards():
         types.Keyboards.VIEW_MESSAGE: keyboards_gen.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.view_question_menu").values()
         ),
+        types.Keyboards.ADMIN_MENU: keyboards_gen.generate_inline_keyboard(
+            persistent_dynamic.get("buttons.admin_menu").values()
+        ),
+        types.Keyboards.ADMIN_ANSWER_MENU: keyboards_gen.generate_inline_keyboard_with_return(
+            persistent_dynamic.get("buttons.admin_answer_menu").values()
+        ),
+        types.Keyboards.ADMIN_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
+            persistent_dynamic.get("buttons.admin_settings").values()
+        ),
+        types.Keyboards.SU_ADMIN_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
+            (
+                persistent_dynamic.get("buttons.admin_settings")
+                | persistent_dynamic.get("buttons.su_admin_settings")
+            ).values()
+        ),
         "lists": {
             types.Keyboards.QUESTION_MENU: list(
                 persistent_dynamic.get("buttons.questions_menu").values()
@@ -154,12 +195,30 @@ def update_keyboards():
             types.Keyboards.VIEW_MESSAGE: list(
                 persistent_dynamic.get("buttons.view_question_menu").values()
             ),
+            types.Keyboards.ADMIN_MENU: list(
+                persistent_dynamic.get("buttons.admin_menu").values()
+            ),
+            types.Keyboards.ADMIN_ANSWER_MENU: list(
+                persistent_dynamic.get("buttons.admin_answer_menu").values()
+            ),
+            types.Keyboards.ADMIN_SETTINGS: list(
+                persistent_dynamic.get("buttons.admin_settings").values()
+            ),
+            types.Keyboards.SU_ADMIN_SETTINGS: list(
+                (
+                    persistent_dynamic.get("buttons.admin_settings")
+                    | persistent_dynamic.get("buttons.su_admin_settings")
+                ).values()
+            ),
         },
     }
 
 
-def dynamic_data_setup(logger: Logger):
-    database.setup_sqlite_db(logger)
+@decorators.define_log(
+    logger=logger, begin="Starting to check/setup db and json", end="db/json are set up"
+)
+def dynamic_data_setup():
+    database.setup_sqlite_db()
 
     logger.debug("Loading in json data")
 

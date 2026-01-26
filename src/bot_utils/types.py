@@ -73,6 +73,7 @@ class AdminState(Enum):
     MAIN_MENU = auto()
     SETTINGS = auto()
     CHANGING_TEXT = auto()
+    ENTERING_NAME = auto()
 
 
 class Keyboards(Enum):
@@ -81,6 +82,9 @@ class Keyboards(Enum):
     DEPARTMENTS = auto()
     VIEW_MESSAGE = auto()
     ADMIN_MENU = auto()
+    ADMIN_SETTINGS = auto()
+    SU_ADMIN_SETTINGS = auto()
+    ADMIN_ANSWER_MENU = auto()
 
 
 class BotMemory(IntEnum):

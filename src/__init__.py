@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # Bot setup
     logging.info("Starting up")
 
-    setup.dynamic_data_setup(logger)
+    setup.dynamic_data_setup()
 
     persistence = PicklePersistence(filepath=types.FileNames.PERSISTENCE)
     app = Application.builder().token(TOKEN).persistence(persistence).build()
