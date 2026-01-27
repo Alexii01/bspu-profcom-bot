@@ -42,6 +42,9 @@ def generate_conversation_handler():
     admin_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("admin", callback=admin_menu.init_login)],
         states={
+            types.MainMenuState.ERROR_ENCOUNTERED: [
+                CallbackQueryHandler(admin_menu.return_to_main_menu)
+            ],
             types.AdminState.LOGIN: [
                 MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.login)
             ],
@@ -58,7 +61,7 @@ def generate_conversation_handler():
         fallbacks=[
             MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.fallback)
         ],
-        map_to_parent={types.State.MAIN_MENU: types.State.MAIN_MENU},
+        map_to_parent={types.MainMenuState.MAIN_MENU: types.MainMenuState.MAIN_MENU},
         name="Admin panel handler",
         persistent=True,
     )
@@ -74,19 +77,19 @@ def generate_conversation_handler():
             )
         ],
         states={
-            types.State.QUESTION_MENU: [
+            types.QuestionState.QUESTION_MENU: [
                 CallbackQueryHandler(questions_menu.main_callback),
             ],
-            types.State.DEPARTMENT_MENU: [
+            types.QuestionState.DEPARTMENT_MENU: [
                 CallbackQueryHandler(questions_menu.department_selected),
             ],
-            types.State.QUESTION_VIEW_MENU: [
+            types.QuestionState.QUESTION_VIEW_MENU: [
                 CallbackQueryHandler(questions_menu.view_msg_callback),
             ],
-            types.State.VIEWING_QUESTION: [
+            types.QuestionState.VIEWING_QUESTION: [
                 CallbackQueryHandler(questions_menu.questions_list_callback)
             ],
-            types.State.ASKING_QUESTION: [
+            types.QuestionState.ASKING_QUESTION: [
                 MessageHandler(
                     filters=msg_filters.TEXT, callback=questions_menu.question
                 ),
@@ -95,7 +98,7 @@ def generate_conversation_handler():
         fallbacks=[
             MessageHandler(filters=msg_filters.TEXT, callback=questions_menu.fallback)
         ],
-        map_to_parent={types.State.MAIN_MENU: types.State.MAIN_MENU},
+        map_to_parent={types.MainMenuState.MAIN_MENU: types.MainMenuState.MAIN_MENU},
         name="Questions handler",
         persistent=True,
     )
@@ -105,7 +108,8 @@ def generate_conversation_handler():
             CommandHandler("admin", callback=admin_menu.init_login),
         ],
         states={
-            types.State.MAIN_MENU: [
+            types.AdminState.MAIN_MENU: [admin_conv_handler],
+            types.MainMenuState.MAIN_MENU: [
                 admin_conv_handler,
                 question_conv_handler,
                 MessageHandler(
@@ -132,6 +136,9 @@ def generate_conversation_handler():
                     ),
                     callback=main_menu.socials,
                 ),
+            ],
+            types.MainMenuState.ERROR_ENCOUNTERED: [
+                CallbackQueryHandler(callback=main_menu.return_to_main_menu)
             ],
         },
         fallbacks=[
@@ -185,6 +192,7 @@ def update_keyboards():
                 | persistent_dynamic.get("buttons.su_admin_settings")
             ).values()
         ),
+        types.Keyboards.GO_BACK: keyboards_gen.generate_inline_keyboard_with_return([]),
         "lists": {
             types.Keyboards.QUESTION_MENU: list(
                 persistent_dynamic.get("buttons.questions_menu").values()
@@ -219,13 +227,8 @@ def update_keyboards():
 )
 def dynamic_data_setup():
     database.setup_sqlite_db()
-
-    logger.debug("Loading in json data")
-
     # Dumping to guarantee proper data format (only indentation as of now)
     persistent_dynamic.load(str(types.FileNames.DEFAULTS))
     persistent_dynamic.dump(str(types.FileNames.DEFAULTS))
-
-    logger.debug("Updating keyboards")
     # Adding in keyboards
     update_keyboards()

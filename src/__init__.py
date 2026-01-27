@@ -1,6 +1,7 @@
 from telegram import Update
 from typing import Final
 import logging
+import logging.handlers
 
 
 from telegram.ext import (
@@ -15,16 +16,26 @@ from bot_utils import (
 
 
 # Logging config
-logging.basicConfig(
-    format="%(levelname)s: %(asctime)s - %(name)s - %(message)s",
-    level=logging.DEBUG,
+file_handler = logging.handlers.RotatingFileHandler(
+    "rotating.log", maxBytes=1024 * 1024, backupCount=3
 )
+
+file_handler.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(levelname)s: %(asctime)s - %(name)s - %(message)s",
+    handlers=[file_handler, console_handler],
+)
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.INFO)
 
-logger = logging.getLogger(__name__)
 
 # Bot config
 # config.ini has comments that start with "#"

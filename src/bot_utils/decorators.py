@@ -2,8 +2,13 @@ import logging
 import functools
 
 
-def __debug_wrapper(
-    func, logger, begin: str | None = None, end: str | None = None, *args, **kwargs
+def __log_wrapper(
+    func,
+    logger: logging.Logger,
+    begin: str | None = None,
+    end: str | None = None,
+    *args,
+    **kwargs,
 ):
     logger.debug(f"{func.__name__} called" if begin is None else begin)
     result = func(*args, **kwargs)
@@ -11,8 +16,13 @@ def __debug_wrapper(
     return result
 
 
-def __passthrough_debug_wrapper(
-    func, logger, begin: str | None = None, end: str | None = None, *args, **kwargs
+def __passthrough_log_wrapper(
+    func,
+    logger: logging.Logger,
+    begin: str | None = None,
+    end: str | None = None,
+    *args,
+    **kwargs,
 ):
     logger.debug(f"{func.__name__} called" if begin is None else begin)
     result = func(logger, *args, **kwargs)
@@ -37,14 +47,14 @@ def __conditional_log_wrapper(
 
 
 def define_log(
-    logger: logging.Logger | None = None,
+    logger: logging.Logger,
     begin: str | None = None,
     end: str | None = None,
 ):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            return __debug_wrapper(func, logger, begin, end, *args, **kwargs)
+            return __log_wrapper(func, logger, begin, end, *args, **kwargs)
 
         return wrapper
 
@@ -56,23 +66,38 @@ def delegate_logging(
 ):
     @functools.wraps(func)
     def logger_catcher(
-        logger, begin: str | None = None, end: str | None = None, *args, **kwargs
+        logger: logging.Logger,
+        begin: str | None = None,
+        end: str | None = None,
+        *args,
+        **kwargs,
     ):
-        return __debug_wrapper(func, logger, begin, end, *args, **kwargs)
+        return __log_wrapper(func, logger, begin, end, *args, **kwargs)
 
     return logger_catcher
 
 
 def passthrough_log(
-    logger: logging.Logger | None = None,
+    logger: logging.Logger,
     begin: str | None = None,
     end: str | None = None,
 ):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            return __passthrough_debug_wrapper(
-                func, logger, begin, end, *args, **kwargs
+            return __passthrough_log_wrapper(func, logger, begin, end, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def conditional_log(if_true: str, if_false: str, logger: logging.Logger):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return __conditional_log_wrapper(
+                func, logger, if_true, if_false, *args, **kwargs
             )
 
         return wrapper
@@ -80,13 +105,15 @@ def passthrough_log(
     return decorator
 
 
-def conditional_log(if_true: str, if_false: str, logger: logging.Logger | None = None):
+def log_critical_error_and_reraise(logger: logging.Logger):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            return __conditional_log_wrapper(
-                func, logger, if_true, if_false, *args, **kwargs
-            )
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"{type(e).__name__:} {e}")
+                raise e
 
         return wrapper
 

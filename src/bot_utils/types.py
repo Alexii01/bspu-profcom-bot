@@ -58,9 +58,12 @@ from enum import Enum, IntEnum, StrEnum, auto
 GO_BACK_CODE = -1
 
 
-# TODO: Add QuestionState
-class State(Enum):
+class MainMenuState(Enum):
     MAIN_MENU = auto()
+    ERROR_ENCOUNTERED = auto()
+
+
+class QuestionState(Enum):
     QUESTION_MENU = auto()
     DEPARTMENT_MENU = auto()
     QUESTION_VIEW_MENU = auto()
@@ -85,6 +88,7 @@ class Keyboards(Enum):
     ADMIN_SETTINGS = auto()
     SU_ADMIN_SETTINGS = auto()
     ADMIN_ANSWER_MENU = auto()
+    GO_BACK = auto()
 
 
 class BotMemory(IntEnum):

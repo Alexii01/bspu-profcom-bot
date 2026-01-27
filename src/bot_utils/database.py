@@ -8,7 +8,7 @@ from bot_utils import types, models, decorators
 logger = logging.getLogger(__name__)
 
 
-def with_connection(func):
+def __with_connection(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         connection = sqlite3.connect(types.FileNames.DB)
@@ -17,7 +17,7 @@ def with_connection(func):
             result = func(cursor, *args, **kwargs)
             connection.commit()
         except Exception as e:
-            logging.error(f"{type(e).__name__: {e}}")
+            logging.error(f"{type(e).__name__:} {e}")
             raise e
         finally:
             connection.close()
@@ -27,10 +27,8 @@ def with_connection(func):
     return wrapper
 
 
-def insert_quesion(question: models.Question):
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    cursor = connection.cursor()
-
+@__with_connection
+def insert_quesion(cursor: sqlite3.Cursor, question: models.Question):
     cursor.execute(
         "INSERT INTO {} VALUES (?, ?, ?, ?, ?, ?, ?)".format(
             types.DatabaseTables.QUESTIONS
@@ -46,8 +44,6 @@ def insert_quesion(question: models.Question):
         ),
     )
 
-    connection.close()
-
 
 def insert_admin_with_existing_cursor(cursor: sqlite3.Cursor, admin: models.Admin):
     cursor.execute(
@@ -62,13 +58,9 @@ def insert_admin_with_existing_cursor(cursor: sqlite3.Cursor, admin: models.Admi
     )
 
 
-def insert_admin(admin: models.Admin):
-    connection = sqlite3.connect(types.FileNames.DB, autocommit=True)
-    cursor = connection.cursor()
-
+@__with_connection
+def insert_admin(cursor: sqlite3.Cursor, admin: models.Admin):
     insert_admin_with_existing_cursor(cursor, admin)
-
-    connection.close()
 
 
 def table_exists(cursor: sqlite3.Cursor, table_name: str):
@@ -95,9 +87,8 @@ def __create_questions_table(cursor: sqlite3.Cursor):
     )
 
 
-def __create_questions_table_if_not_present(
-    cursor: sqlite3.Cursor, logger: logging.Logger
-):
+@decorators.define_log(logger=logger, begin="Verifying presence of questions table")
+def __create_questions_table_if_not_present(cursor: sqlite3.Cursor):
     if not table_exists(cursor, types.DatabaseTables.QUESTIONS):
         __create_questions_table(cursor)
 
@@ -116,9 +107,8 @@ def __create_admins_table(cursor: sqlite3.Cursor):
     )
 
 
-def __create_admins_table_if_not_present(
-    cursor: sqlite3.Cursor, logger: logging.Logger
-):
+@decorators.define_log(logger=logger, begin="Verifying presence of admin table")
+def __create_admins_table_if_not_present(cursor: sqlite3.Cursor):
     if not table_exists(cursor, types.DatabaseTables.ADMINS):
         __create_admins_table(cursor)
 
@@ -139,7 +129,7 @@ def __super_admin_exists(cursor: sqlite3.Cursor):
     )
 
 
-def __create_super_admin_if_not_present(cursor: sqlite3.Cursor, logger: logging.Logger):
+def __create_super_admin_if_not_present(cursor: sqlite3.Cursor):
     if not __super_admin_exists(cursor):
         # Create super admin
         password = models.AdminFactory.generate_admin_password()
@@ -154,17 +144,17 @@ def __create_super_admin_if_not_present(cursor: sqlite3.Cursor, logger: logging.
         logger.info("Superuser admin created!")
 
 
-@decorators.passthrough_log(
+@decorators.define_log(
     logger=logger, begin="Verifying database", end="Database setup verified"
 )
-@with_connection
-def setup_sqlite_db(cursor: sqlite3.Cursor, logger: logging.Logger):
-    __create_questions_table_if_not_present(cursor, logger)
-    __create_admins_table_if_not_present(cursor, logger)
-    __create_super_admin_if_not_present(cursor, logger)
+@__with_connection
+def setup_sqlite_db(cursor: sqlite3.Cursor):
+    __create_questions_table_if_not_present(cursor)
+    __create_admins_table_if_not_present(cursor)
+    __create_super_admin_if_not_present(cursor)
 
 
-@with_connection
+@__with_connection
 def get_questions_from_user(cursor: sqlite3.Cursor, user_id: int):
     result = cursor.execute(
         "SELECT * FROM {} WHERE asked_by=?".format(types.DatabaseTables.QUESTIONS),
@@ -173,7 +163,7 @@ def get_questions_from_user(cursor: sqlite3.Cursor, user_id: int):
     return result
 
 
-@with_connection
+@__with_connection
 def get_question_by_uuid(cursor: sqlite3.Cursor, uuid: str):
     result = cursor.execute(
         "SELECT * FROM {} WHERE uuid=?".format(types.DatabaseTables.QUESTIONS),
@@ -182,14 +172,14 @@ def get_question_by_uuid(cursor: sqlite3.Cursor, uuid: str):
     return result
 
 
-@with_connection
+@__with_connection
 def delete_question_by_uuid(cursor: sqlite3.Cursor, uuid: str):
     cursor.execute(
         "DELETE FROM {} WHERE uuid=?".format(types.DatabaseTables.QUESTIONS), (uuid,)
     )
 
 
-@with_connection
+@__with_connection
 def authorise_attempt(cursor: sqlite3.Cursor, user_id: int) -> str | None:
     result = cursor.execute(
         "SELECT * FROM {} WHERE telegram_user=?".format(types.DatabaseTables.ADMINS),
@@ -201,7 +191,7 @@ def authorise_attempt(cursor: sqlite3.Cursor, user_id: int) -> str | None:
         return None
 
 
-@with_connection
+@__with_connection
 def authorise_admin(cursor: sqlite3.Cursor, user_id: int, password: str) -> str | None:
     results = cursor.execute(
         "SELECT * FROM {} WHERE telegram_user IS NULL".format(
@@ -231,7 +221,7 @@ def authorise_admin(cursor: sqlite3.Cursor, user_id: int, password: str) -> str 
     return None
 
 
-@with_connection
+@__with_connection
 def is_admin_su(cursor: sqlite3.Cursor, uuid: str) -> bool:
     result = cursor.execute(
         "SELECT is_super FROM {} WHERE uuid=?".format(types.DatabaseTables.ADMINS),
@@ -243,7 +233,7 @@ def is_admin_su(cursor: sqlite3.Cursor, uuid: str) -> bool:
         return result[0]
 
 
-@with_connection
+@__with_connection
 def update_admin_name(cursor: sqlite3.Cursor, name: str, uuid: str) -> bool:
     cursor.execute(
         "UPDATE {} SET public_name=? WHERE uuid=?".format(types.DatabaseTables.ADMINS),

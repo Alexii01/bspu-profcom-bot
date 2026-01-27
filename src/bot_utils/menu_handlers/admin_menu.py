@@ -7,6 +7,9 @@ from telegram.ext import ContextTypes
 
 from bot_utils import types, database
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
+from bot_utils.menu_handlers import error_handling
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_admin_keyboard(uuid: str):
@@ -17,6 +20,9 @@ def fetch_admin_keyboard(uuid: str):
     )
 
 
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
 async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     result = database.authorise_attempt(update.effective_user.id)
     if result is not None:
@@ -32,6 +38,9 @@ async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return types.AdminState.LOGIN
 
 
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     result = database.authorise_admin(update.effective_user.id, update.message.text)
     if result is None:
@@ -39,7 +48,7 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             text=persistent_dynamic.get("text.return_to_main_menu"),
             reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
         )
-        return types.State.MAIN_MENU
+        return types.QuestionState.MAIN_MENU
     else:
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result[0]
         await update.message.reply_text(
@@ -49,6 +58,9 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return types.AdminState.MAIN_MENU
 
 
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
 async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
     query = update.callback_query
@@ -88,7 +100,10 @@ async def stop_answering_questions(
     pass
 
 
-async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
+async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
     query = update.callback_query
 
@@ -105,6 +120,8 @@ async def settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 ],
             )
             return types.AdminState.MAIN_MENU
+        case any:
+            raise NotImplementedError("Most settings aren't ready yet")
 
 
 async def update_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -120,10 +137,6 @@ async def update_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return types.AdminState.SETTINGS
 
 
-async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    pass
-
-
 async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Returns user to main menu and sends an appropariate message"""
     del context
@@ -133,4 +146,19 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text=persistent_dynamic.get("text.main_menu_fallback"),
         reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.MAIN_MENU],
     )
-    return types.State.MAIN_MENU
+    return types.QuestionState.MAIN_MENU
+
+
+async def return_to_main_menu(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text=persistent_dynamic.get("text.sorry_error")
+    )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=persistent_dynamic.get("text.successful_login"),
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.ADMIN_MENU],
+    )
+    return types.AdminState.MAIN_MENU
