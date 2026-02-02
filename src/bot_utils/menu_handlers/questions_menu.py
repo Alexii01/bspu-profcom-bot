@@ -24,7 +24,7 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text=persistent_dynamic.get("text.questions_menu"),
         reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.QUESTION_MENU],
     )
-    return types.QuestionState.QUESTION_MENU
+    return types.QuestionState.MAIN_MENU
 
 
 @error_handling.log_on_error_and_return(
@@ -36,8 +36,6 @@ async def main_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await query.answer()
 
     if int(query.data) == types.GO_BACK_CODE:
-        # TODO: Add an (OK) button such that the message can be edited,
-        # TODO: but the user can still read the message
         await query.edit_message_text(text=persistent_dynamic.get("buttons.go_back"))
 
         await context.bot.send_message(
@@ -91,7 +89,7 @@ async def department_selected(
                 types.Keyboards.QUESTION_MENU
             ],
         )
-        return types.QuestionState.QUESTION_MENU
+        return types.QuestionState.MAIN_MENU
 
     match runtime_dynamic.get("keyboards.lists")[types.Keyboards.DEPARTMENTS][
         int(query.data)
@@ -115,6 +113,9 @@ async def view_msg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         "%d: Viewing question %s", update.effective_user.id, update.callback_query.data
     )
 
+    # TODO: Add proper message info: date, department, blablabla
+    # TODO: Ensure that the message is under the maximum message length limit
+    # TODO: Avoid using two separate messages, merge and split only if necessary
     await update.callback_query.edit_message_text(
         text=persistent_dynamic.get("text.inspect_user_question")
         + database.get_question_by_uuid(update.callback_query.data)[6],
@@ -149,7 +150,7 @@ async def questions_list_callback(
                 types.Keyboards.QUESTION_MENU
             ],
         )
-        return types.QuestionState.QUESTION_MENU
+        return types.QuestionState.MAIN_MENU
 
     match runtime_dynamic.get("keyboards.lists")[types.Keyboards.VIEW_MESSAGE][
         int(query.data)
@@ -164,7 +165,7 @@ async def questions_list_callback(
                     types.Keyboards.QUESTION_MENU
                 ],
             )
-            return types.QuestionState.QUESTION_MENU
+            return types.QuestionState.MAIN_MENU
 
 
 @error_handling.log_on_error_and_return(
@@ -185,7 +186,7 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 types.Keyboards.QUESTION_MENU
             ],
         )
-        return types.QuestionState.QUESTION_MENU
+        return types.QuestionState.MAIN_MENU
 
     question = Question(
         uuid=uuid4(),
@@ -205,7 +206,22 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text=persistent_dynamic.get("text.thanks_for_question"),
         reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.QUESTION_MENU],
     )
-    return types.QuestionState.QUESTION_MENU
+    return types.QuestionState.MAIN_MENU
+
+
+async def return_to_main_menu(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text=persistent_dynamic.get("text.sorry_error")
+    )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=persistent_dynamic.get("text.questions_menu"),
+        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.QUESTION_MENU],
+    )
+    return types.QuestionState.MAIN_MENU
 
 
 async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -217,4 +233,4 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text=persistent_dynamic.get("text.questions_menu_fallback"),
         reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.QUESTION_MENU],
     )
-    return types.QuestionState.QUESTION_MENU
+    return types.QuestionState.MAIN_MENU

@@ -12,6 +12,7 @@ def __with_connection(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         connection = sqlite3.connect(types.FileNames.DB)
+        connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
         try:
             result = func(cursor, *args, **kwargs)
@@ -75,6 +76,7 @@ def table_exists(cursor: sqlite3.Cursor, table_name: str):
 
 @decorators.define_log(
     logger=logger,
+    level=logging.INFO,
     begin="No questions table found, creating...",
     end="Created questions table!",
 )
@@ -87,7 +89,9 @@ def __create_questions_table(cursor: sqlite3.Cursor):
     )
 
 
-@decorators.define_log(logger=logger, begin="Verifying presence of questions table")
+@decorators.define_log(
+    logger=logger, level=logging.INFO, begin="Verifying presence of questions table"
+)
 def __create_questions_table_if_not_present(cursor: sqlite3.Cursor):
     if not table_exists(cursor, types.DatabaseTables.QUESTIONS):
         __create_questions_table(cursor)
@@ -95,6 +99,7 @@ def __create_questions_table_if_not_present(cursor: sqlite3.Cursor):
 
 @decorators.define_log(
     logger=logger,
+    level=logging.INFO,
     begin="No admins table found, creating...",
     end="Created questions table!",
 )
@@ -107,7 +112,9 @@ def __create_admins_table(cursor: sqlite3.Cursor):
     )
 
 
-@decorators.define_log(logger=logger, begin="Verifying presence of admin table")
+@decorators.define_log(
+    logger=logger, level=logging.INFO, begin="Verifying presence of admin table"
+)
 def __create_admins_table_if_not_present(cursor: sqlite3.Cursor):
     if not table_exists(cursor, types.DatabaseTables.ADMINS):
         __create_admins_table(cursor)
@@ -115,6 +122,7 @@ def __create_admins_table_if_not_present(cursor: sqlite3.Cursor):
 
 @decorators.conditional_log(
     logger=logger,
+    level=logging.INFO,
     if_true="Superuser admin exists",
     if_false="No superuser admin exists!",
 )
@@ -145,7 +153,10 @@ def __create_super_admin_if_not_present(cursor: sqlite3.Cursor):
 
 
 @decorators.define_log(
-    logger=logger, begin="Verifying database", end="Database setup verified"
+    logger=logger,
+    level=logging.INFO,
+    begin="Verifying database",
+    end="Database setup verified",
 )
 @__with_connection
 def setup_sqlite_db(cursor: sqlite3.Cursor):

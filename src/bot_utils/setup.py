@@ -35,6 +35,7 @@ filterwarnings(
 
 @decorators.define_log(
     logger=logger,
+    level=logging.DEBUG,
     begin="Generating conversation handlers",
     end="Finished generating conversation handlers!",
 )
@@ -55,7 +56,12 @@ def generate_conversation_handler():
                 CallbackQueryHandler(admin_menu.settings_callback)
             ],
             types.AdminState.ENTERING_NAME: [
-                CallbackQueryHandler(admin_menu.update_name)
+                MessageHandler(
+                    filters=msg_filters.TEXT, callback=admin_menu.update_name
+                )
+            ],
+            types.AdminState.SELECTING_DEPARTMENT: [
+                CallbackQueryHandler(admin_menu.select_department)
             ],
         },
         fallbacks=[
@@ -77,7 +83,7 @@ def generate_conversation_handler():
             )
         ],
         states={
-            types.QuestionState.QUESTION_MENU: [
+            types.QuestionState.MAIN_MENU: [
                 CallbackQueryHandler(questions_menu.main_callback),
             ],
             types.QuestionState.DEPARTMENT_MENU: [
@@ -93,6 +99,9 @@ def generate_conversation_handler():
                 MessageHandler(
                     filters=msg_filters.TEXT, callback=questions_menu.question
                 ),
+            ],
+            types.MainMenuState.ERROR_ENCOUNTERED: [
+                CallbackQueryHandler(callback=questions_menu.return_to_main_menu)
             ],
         },
         fallbacks=[
@@ -161,7 +170,10 @@ def generate_conversation_handler():
 
 
 @decorators.define_log(
-    logger=logger, begin="Generating keyboards", end="Keyboards generated!"
+    logger=logger,
+    level=logging.DEBUG,
+    begin="Generating keyboards",
+    end="Keyboards generated!",
 )
 def update_keyboards():
     runtime_dynamic.data["keyboards"] = {
@@ -223,7 +235,10 @@ def update_keyboards():
 
 
 @decorators.define_log(
-    logger=logger, begin="Starting to check/setup db and json", end="db/json are set up"
+    logger=logger,
+    level=logging.INFO,
+    begin="Running setup procedures",
+    end="Setup procedures completed successfully",
 )
 def dynamic_data_setup():
     database.setup_sqlite_db()

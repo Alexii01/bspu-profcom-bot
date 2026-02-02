@@ -28,7 +28,6 @@ class Admin:
     public_name: str
     telegram_user: User | None
     password_hash: str
-    is_super: Final[bool]
 
 
 class AdminFactory:
@@ -47,7 +46,7 @@ class AdminFactory:
             types.PasswordFormat.PARTS, types.PasswordFormat.PART_LENGTH
         )
 
-    def __new_admin(name: str, password: str, is_super: bool) -> Admin:
+    def new_admin(name: str, password: str) -> Admin:
         return Admin(
             uuid=uuid4(),
             public_name=name,
@@ -55,14 +54,4 @@ class AdminFactory:
             password_hash=bcrypt.hashpw(
                 password.encode("ascii"), bcrypt.gensalt(rounds=15)
             ),
-            is_super=is_super,
         )
-
-    def new_super_admin(name: str, password: str) -> Admin:
-        return AdminFactory.__new_admin(name, password, True)
-
-    def new_admin(
-        name: str,
-        password: str,
-    ) -> Admin:
-        return AdminFactory.__new_admin(name, password, False)

@@ -1,8 +1,5 @@
 from enum import Enum, IntEnum, StrEnum, auto
 
-# TODO: In questions use separate dates for when a question was asked and when
-# a question was answered
-
 # For every question there is a notification
 # Admins can answer questions in a spree
 # In a spree admins are given questions one by one until there are no left
@@ -14,7 +11,6 @@ from enum import Enum, IntEnum, StrEnum, auto
 
 # TODO: Add template answer "Look at FAQ" (make editable through admin panel)
 # TODO : Add a list of users who are expecting an answer
-# TODO: Change question viewing to question deletion.
 
 # Admin menu options:
 # - question spree
@@ -44,7 +40,6 @@ from enum import Enum, IntEnum, StrEnum, auto
 # - Delete and log out admins
 
 # TODO: Look at hostings' data/resource allowance!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# TODO: Consider sqlite for data storage
 # Availablle hostings:
 # - fps.ms
 # - PythonAnywhere
@@ -64,7 +59,7 @@ class MainMenuState(Enum):
 
 
 class QuestionState(Enum):
-    QUESTION_MENU = auto()
+    MAIN_MENU = auto()
     DEPARTMENT_MENU = auto()
     QUESTION_VIEW_MENU = auto()
     ASKING_QUESTION = auto()
@@ -77,6 +72,7 @@ class AdminState(Enum):
     SETTINGS = auto()
     CHANGING_TEXT = auto()
     ENTERING_NAME = auto()
+    SELECTING_DEPARTMENT = auto()
 
 
 class Keyboards(Enum):
@@ -93,6 +89,7 @@ class Keyboards(Enum):
 
 class BotMemory(IntEnum):
     SELECTED_DEPARTMENT = auto()
+    ADMIN_SELECTED_DEPARTMENT = auto()
     VIEWED_MSG = auto()
     LOGGED_IN_AS = auto()
 
@@ -107,9 +104,21 @@ class DatabaseTables(StrEnum):
     ADMINS = "admins"
 
 
+class AdminAttributes(StrEnum):
+    UUID = "uuid"
+    NAME = "public_name"
+    USER = "telegram_user"
+    PWD = "password_hash"
+    IS_SUPER = "is_super"
+    IS_MAINTAINER = "is_maintainer"
+    NAMES_NEWSLETTER = "name_updates_newsletter"
+    ERROR_NEWLSETTER = "error_newsletter"
+
+
 class FileNames(StrEnum):
     CONFIG = "config.ini"
     PERSISTENCE = "persistence.bin"
     DEFAULTS = "defaults.json"
     DB = "data.db"
-    DB_SETUP = "db_setup.log"
+    FIRST_SU_PASSWORD = "db_setup.log"
+    LOG = "rotating.log"

@@ -10,9 +10,10 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
-from bot_utils import types
+from bot_utils import types, database
 
 
+# TODO: REVIEW
 def split_message_into_valid_chunks(msg: str, max_chunk_length: int) -> Iterable[str]:
     chunks = []
     msg_len = len(msg)
@@ -29,11 +30,12 @@ def split_message_into_valid_chunks(msg: str, max_chunk_length: int) -> Iterable
                 begin = split_pos + 6
                 end = min(msg_len, begin + max_chunk_length)
             else:
-                new_chunk = msg[
-                    min(begin + 5, msg_len) : min(begin + max_chunk_length, msg_len)
-                ]
-                begin = msg.find("<pre>", end, msg_len)
+                split_pos = msg.rfind("\n", begin, end - 5)
+                new_chunk = msg[begin:split_pos] + "</pre>"
+                begin = split_pos
                 end = min(msg_len, begin + max_chunk_length)
+                msg = msg[:begin] + "<pre>" + msg[begin:]
+                msg_len = len(msg)
 
         else:
             # If this is not a pre block, consider a chunk if fits or skip
@@ -74,11 +76,19 @@ async def log_and_recover(
 ):
     # Three functions: log to logger, send message to maintainer, tell user of an error and return them to a safe state
 
-    logger.error(f"Exception while handling an update: {error}")
     # LOGGING TO DEVELOPER
     tb_list = traceback.format_exception(None, error, error.__traceback__)
     tb_string = "".join(tb_list)
     update_str = update.to_dict() if isinstance(update, Update) else str(update)
+
+    logger.error(
+        f"{type(error).__name__}({error})\n"
+        "An exception was raised while handling an update\n"
+        f"update = {json.dumps(update_str, indent=2, ensure_ascii=False)}\n\n"
+        f"context.chat_data = {str(context.chat_data)}\n\n"
+        f"context.user_data = {str(context.user_data)}\n\n"
+        f"{tb_string}"
+    )
 
     message = (
         "An exception was raised while handling an update\n"
@@ -88,10 +98,11 @@ async def log_and_recover(
         f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"
     )
-
     split_message = split_message_into_valid_chunks(
         message, MessageLimit.MAX_TEXT_LENGTH
     )
+
+    # Sending data to dev
     for chunk in split_message:
         await context.bot.send_message(
             chat_id=update.effective_user.id,
@@ -99,7 +110,7 @@ async def log_and_recover(
             parse_mode=ParseMode.HTML,
         )
 
-    # RETURNING TO A SAFE STATE TO USER
+    # Graceful error handling from the user's perspective
     await context.bot.send_message(
         chat_id=update.effective_user.id,
         text=persistent_dynamic.get("text.sorry_error"),

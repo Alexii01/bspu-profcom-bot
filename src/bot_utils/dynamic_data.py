@@ -15,7 +15,7 @@ class SharedDynamicDataClass:
 
     def load(self, filepath: str):
         with open(file=filepath, mode="r", encoding="utf-8") as data_file:
-            logger.debug(f"{self.name} load from {filepath}")
+            logger.info(f"{self.name} load from {filepath}")
             data = json.load(data_file)
 
         self.data = data
@@ -26,10 +26,10 @@ class SharedDynamicDataClass:
             return
 
         with open(file=filepath, mode="w", encoding="utf-8") as data_file:
-            logger.debug(f"{self.name} dump to {filepath}")
+            logger.info(f"{self.name} dump to {filepath}")
             json.dump(self.data, data_file, indent=2, ensure_ascii=False)
 
-    @decorators.log_critical_error_and_reraise(logger=logger)
+    @decorators.log_error_and_reraise(logger=logger)
     def get(self, key: str):
         if self.data is None:
             raise UnboundLocalError(

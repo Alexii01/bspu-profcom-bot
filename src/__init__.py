@@ -17,7 +17,7 @@ from bot_utils import (
 
 # Logging config
 file_handler = logging.handlers.RotatingFileHandler(
-    "rotating.log", maxBytes=1024 * 1024, backupCount=3
+    types.FileNames.LOG, maxBytes=1024 * 1024, backupCount=3
 )
 
 file_handler.setLevel(logging.DEBUG)

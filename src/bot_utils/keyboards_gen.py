@@ -1,11 +1,11 @@
 from typing import Iterable
 
-from telegram.ext import ContextTypes
 from telegram import (
     ReplyKeyboardMarkup,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
+from telegram.ext import ContextTypes
 
 from bot_utils import types, database
 from bot_utils.dynamic_data import persistent_dynamic
@@ -14,6 +14,7 @@ from bot_utils.dynamic_data import persistent_dynamic
 def generate_reply_keyboard(keyboard_options: Iterable[str]):
     return ReplyKeyboardMarkup(
         keyboard=[[item] for item in keyboard_options],
+        resize_keyboard=True,
         one_time_keyboard=True,
         is_persistent=True,
     )
@@ -51,15 +52,13 @@ def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
                     callback_data=types.GO_BACK_CODE,
                 )
             ]
-        ]
+        ],
     )
 
 
 def generate_users_message_keyboard(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> InlineKeyboardMarkup | None:
-    # TODO: Refactor, this is so damn old
-
     questions = database.get_questions_from_user(context._user_id)
 
     messages_keyboard = InlineKeyboardMarkup(
