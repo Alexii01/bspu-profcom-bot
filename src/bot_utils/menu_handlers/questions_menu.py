@@ -120,7 +120,7 @@ async def view_msg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # TODO: Avoid using two separate messages, merge and split only if necessary
     await update.callback_query.edit_message_text(
         text=persistent_dynamic.get("text.inspect_user_question")
-        + (await database.get_question_by_id(update.callback_query.data)).message,
+        + (await database.select_question_by_id(update.callback_query.data)).message,
     )
 
     await update.get_bot().send_message(
@@ -193,7 +193,6 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     question = Question(
         id=uuid4(),
         user_id=update.effective_user.id,
-        chat_id=update.effective_chat.id,
         asked_date=update.message.date,
         department_id=department_id,
         answered_by=None,

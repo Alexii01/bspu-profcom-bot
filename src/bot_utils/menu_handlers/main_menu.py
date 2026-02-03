@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Initiates the beginning of conversation for a regular user"""
-    del context
+    # TODO: Decide if this is necessary
+    # context.bot_data.setdefault(types.BotMemory.STARTED_CHAT, set())
+    # context.bot_data[types.BotMemory.STARTED_CHAT].add(update.effective_user.id)
 
     logging.debug("%d: Started convo with user", update.effective_user.id)
     await update.message.reply_text(

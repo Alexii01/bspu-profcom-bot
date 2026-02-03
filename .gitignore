@@ -2,10 +2,10 @@
 .venv/
 *__pycache__*
 
-config.ini
 persistence*
 *.json*
-*.log
+*.log*
+*.ini*
 *.bin*
-*.ipynb
-*.db
+*.ipynb*
+*.db*

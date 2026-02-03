@@ -50,6 +50,12 @@ from enum import Enum, IntEnum, StrEnum, IntFlag, auto
 # - GitHub pages
 # - Google Colab (Jupyter Notebook integration?)
 
+# - Динамическая система отделов
+# - Ответы на вопросы пора прикрутить
+# - Изменения текста в боте
+# -
+#
+
 GO_BACK_CODE = -1
 
 
@@ -75,6 +81,7 @@ class AdminState(Enum):
     CHANGING_TEXT = auto()
     ENTERING_NAME = auto()
     SELECTING_DEPARTMENT = auto()
+    SELECTING_ADMIN_TO_DELETE = auto()
 
 
 class AdminFlags(IntFlag):
@@ -101,6 +108,7 @@ class BotMemory(IntEnum):
     ADMIN_SELECTED_DEPARTMENT = auto()
     VIEWED_MSG = auto()
     LOGGED_IN_AS = auto()
+    STARTED_CHAT = auto()
 
 
 class PasswordFormat(IntEnum):

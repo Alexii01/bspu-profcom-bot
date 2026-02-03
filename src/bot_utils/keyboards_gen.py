@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Dict
 
 from telegram import (
     ReplyKeyboardMarkup,
@@ -34,6 +34,23 @@ def generate_inline_keyboard(keyboard_options: Iterable[str]):
     )
 
 
+def generate_inline_keyboard_with_custom_callback_data(data: Dict[str, str]):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=str(key), callback_data=value)]
+            for key, value in data.items()
+        ]
+        + [
+            [
+                InlineKeyboardButton(
+                    text=persistent_dynamic.get("buttons.go_back"),
+                    callback_data=types.GO_BACK_CODE,
+                )
+            ]
+        ],
+    )
+
+
 def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
     options_list = list(keyboard_options)
     return InlineKeyboardMarkup(
@@ -59,7 +76,7 @@ def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
 async def generate_users_message_keyboard(
     update: Update,
 ) -> InlineKeyboardMarkup | None:
-    questions: Iterable[models.Question] = await database.get_questions_from_user(
+    questions: Iterable[models.Question] = await database.select_questions_from_user(
         update.effective_user.id
     )
 

@@ -66,6 +66,9 @@ def generate_conversation_handler():
             types.AdminState.SU_SETTINGS: [
                 CallbackQueryHandler(admin_menu.su_settings_callback)
             ],
+            types.AdminState.SELECTING_ADMIN_TO_DELETE: [
+                CallbackQueryHandler(admin_menu.delete_admin_callback)
+            ],
             types.AdminState.MAINTAINER_SETTINGS: [
                 CallbackQueryHandler(admin_menu.maintainer_settings_callback)
             ],

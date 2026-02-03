@@ -15,7 +15,6 @@ __MAKE_SCHEMA = f"""
         id TEXT PRIMARY KEY,
         public_name TEXT,
         user_id INT UNIQUE,
-        chat_id INT,
         password_hash BLOB,
         flags INT
     );
@@ -23,18 +22,17 @@ __MAKE_SCHEMA = f"""
     CREATE TABLE IF NOT EXISTS {types.DatabaseTables.QUESTIONS} (
         id TEXT PRIMARY KEY,
         user_id INT,
-        chat_id INT,
         department TEXT,
         asked_date TEXT,
         answered_by INT,
         answered_date TEXT,
         message TEXT
-    )
+    );
     """
 
-__INSERT_ADMIN = f"INSERT INTO {types.DatabaseTables.ADMINS} VALUES (?, ?, ?, ?, ?, ?)"
+__INSERT_ADMIN = f"INSERT INTO {types.DatabaseTables.ADMINS} VALUES (?, ?, ?, ?, ?)"
 __INSERT_QUESTION = (
-    f"INSERT INTO {types.DatabaseTables.QUESTIONS} VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    f"INSERT INTO {types.DatabaseTables.QUESTIONS} VALUES (?, ?, ?, ?, ?, ?, ?)"
 )
 __SUPERUSER_MAINTAINER_EXISTS = f"""
     SELECT EXISTS(
@@ -42,16 +40,26 @@ __SUPERUSER_MAINTAINER_EXISTS = f"""
         FROM {types.DatabaseTables.ADMINS}
         WHERE (flags & {types.AdminFlags.IS_SUPER | types.AdminFlags.IS_MAINTAINER}) = {types.AdminFlags.IS_SUPER | types.AdminFlags.IS_MAINTAINER}
     )"""
-__SELECT_ADMIN_BY_ID = f"SELECT * FROM {types.DatabaseTables.ADMINS} WHERE id=?"
+__SELECT_ALL_ADMINS = f"SELECT * FROM {types.DatabaseTables.ADMINS}"
+__SELECT_ADMIN_WITH_ID = f"SELECT * FROM {types.DatabaseTables.ADMINS} WHERE id=?"
+__SELECT_ADMIN_WITH_USER_ID = (
+    f"SELECT * FROM {types.DatabaseTables.ADMINS} WHERE user_id=?"
+)
 __SELECT_ADMINS_WITH_FLAGS = (
     f"SELECT * FROM {types.DatabaseTables.ADMINS} WHERE (flags & ?) = ?"
 )
+__SELECT_ALL_ADMIN_NAMES = f"SELECT public_name FROM {types.DatabaseTables.ADMINS}"
 __ADMIN_WITH_ID_AND_FLAGS_EXISTS = f"""
     SELECT EXISTS(
         SELECT 1
         FROM {types.DatabaseTables.ADMINS}
         WHERE id=? AND (flags & ?) = ?
     )"""
+__SELECT_ADMINS_WITHOUT_FLAGS = f"""
+    SELECT *
+    FROM {types.DatabaseTables.ADMINS}
+    WHERE (~flags & ?) = ?;
+"""
 __ADMIN_WITH_ID_EXISTS = f"""
     SELECT EXISTS(
         SELECT 1
@@ -63,11 +71,16 @@ __ADMIN_WITH_ID_EXISTS = f"""
 __SELECT_QUESTIONS_FROM_USER = (
     f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE user_id=?"
 )
-__SELECT_QUESTION_BY_ID = f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
+__SELECT_QUESTION_WITH_ID = f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
 
-__DELETE_QUESTIONS_BY_ID = f"DELETE FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
-
-__SELECT_ADMIN_WITH_ID = f"SELECT * FROM {types.DatabaseTables.ADMINS} WHERE user_id=?"
+__SELECT_USERS_WITH_QUESTIONS = (
+    f"SELECT DISTINCT user_id FROM {types.DatabaseTables.QUESTIONS}"
+)
+__DELETE_QUESTION_WITH_ID = f"DELETE FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
+__SELECT_MAINTAINERS_USER_IDS = f"""
+    SELECT user_id
+    FROM {types.DatabaseTables.ADMINS}
+    WHERE (flags & {types.AdminFlags.IS_MAINTAINER}) = {types.AdminFlags.IS_MAINTAINER}"""
 __SELECT_ADMINS_WITHOUT_ASSOCIATED_USER = (
     f"SELECT * FROM {types.DatabaseTables.ADMINS} WHERE user_id IS NULL"
 )
@@ -77,6 +90,21 @@ __UPDATE_ADMIN_USER_ID_WITH_ID = (
 __UPDATE_ADMIN_NAME_WITH_ID = (
     f"UPDATE {types.DatabaseTables.ADMINS} SET public_name=? where id=?"
 )
+__DELETE_ADMIN_WITH_ID = f"DELETE FROM {types.DatabaseTables.ADMINS} WHERE id=?"
+__UPDATE_DISABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID = f"""
+    UPDATE {types.DatabaseTables.ADMINS}
+    SET flags = (flags & ~{types.AdminFlags.LOG_ERRORS})
+    WHERE id=?
+    """
+__UPDATE_ENABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID = f"""
+    UPDATE {types.DatabaseTables.ADMINS}
+    SET flags = (flags | {types.AdminFlags.LOG_ERRORS})
+    WHERE id=?
+"""
+
+
+def single_element_factory(conn: aiosqlite.Connection, element: tuple):
+    return element[0]
 
 
 def admin_factory(conn: aiosqlite.Connection, admin: tuple):
@@ -84,9 +112,8 @@ def admin_factory(conn: aiosqlite.Connection, admin: tuple):
         id=admin[0],
         public_name=admin[1],
         user_id=admin[2],
-        chat_id=admin[3],
-        password_hash=admin[4],
-        flags=admin[5],
+        password_hash=admin[3],
+        flags=admin[4],
     )
 
 
@@ -94,12 +121,11 @@ def question_factory(conn: aiosqlite.Connection, question: tuple):
     return models.Question(
         id=question[0],
         user_id=question[1],
-        chat_id=question[2],
-        department_id=question[3],
-        asked_date=question[4],
-        answered_by=question[5],
-        answered_date=question[6],
-        message=question[7],
+        department_id=question[2],
+        asked_date=question[3],
+        answered_by=question[4],
+        answered_date=question[5],
+        message=question[6],
     )
 
 
@@ -126,7 +152,6 @@ async def insert_question(conn: aiosqlite.Connection, question: models.Question)
         (
             str(question.id),
             question.user_id,
-            question.chat_id,
             question.department_id,
             question.asked_date,
             question.answered_by,
@@ -145,7 +170,6 @@ async def insert_admin_with_existing_connection(
             str(admin.id),
             admin.public_name,
             admin.user_id if admin.user_id else None,
-            admin.chat_id if admin.chat_id else None,
             admin.password_hash,
             admin.flags,
         ),
@@ -212,7 +236,7 @@ def setup_sqlite_db():
 
 
 @__with_connection
-async def get_questions_from_user(
+async def select_questions_from_user(
     conn: aiosqlite.Connection, user_id: int
 ) -> Iterable[models.Question]:
     conn.row_factory = question_factory
@@ -221,32 +245,39 @@ async def get_questions_from_user(
 
 
 @__with_connection
-async def get_question_by_id(conn: aiosqlite.Connection, id: str) -> models.Question:
+async def select_question_by_id(conn: aiosqlite.Connection, id: str) -> models.Question:
     conn.row_factory = question_factory
-    async with conn.execute(__SELECT_QUESTION_BY_ID, (id,)) as cursor:
+    async with conn.execute(__SELECT_QUESTION_WITH_ID, (id,)) as cursor:
         return await cursor.fetchone()
 
 
 @__with_connection
 async def delete_question_by_id(conn: aiosqlite.Connection, id: str):
-    await conn.execute(__DELETE_QUESTIONS_BY_ID, (id,))
+    await conn.execute(__DELETE_QUESTION_WITH_ID, (id,))
 
 
 @__with_connection
-async def get_admin_by_id(conn: aiosqlite.Connection, id: str) -> models.Admin:
+async def select_users_with_questions(conn: aiosqlite.Connection):
+    async with conn.execute(__SELECT_USERS_WITH_QUESTIONS) as cursor:
+        cursor.row_factory = single_element_factory
+        return await cursor.fetchall()
+
+
+@__with_connection
+async def select_admin_with_id(conn: aiosqlite.Connection, id: str) -> models.Admin:
     conn.row_factory = admin_factory
-    async with conn.execute(__SELECT_ADMIN_BY_ID, (id,)) as cursor:
-        return await cursor.fetchone()
+    async with conn.execute(__SELECT_ADMIN_WITH_ID, (id,)) as cursor:
+        result = await cursor.fetchone()
+        return result
 
 
 @__with_connection
-async def authorise_admin_with_id(
+async def select_admin_with_user_id(
     conn: aiosqlite.Connection, user_id: int
 ) -> models.Admin:
     conn.row_factory = admin_factory
-    async with conn.execute(__SELECT_ADMIN_WITH_ID, (user_id,)) as cursor:
-        result = await cursor.fetchone()
-        return result if result else None
+    async with conn.execute(__SELECT_ADMIN_WITH_USER_ID, (user_id,)) as cursor:
+        return await cursor.fetchone()
 
 
 @__with_connection
@@ -301,3 +332,66 @@ async def update_admin_name(conn: aiosqlite.Connection, name: str, id: str):
             id,
         ),
     )
+
+
+@__with_connection
+async def select_all_admin_names(conn: aiosqlite.Connection):
+    async with conn.execute(__SELECT_ALL_ADMIN_NAMES) as cursor:
+        cursor.row_factory = single_element_factory
+        return await cursor.fetchall()
+
+
+@__with_connection
+async def select_all_admins(conn: aiosqlite.Connection) -> Iterable[models.Admin]:
+    async with conn.execute(__SELECT_ALL_ADMINS) as cursor:
+        cursor.row_factory = admin_factory
+        return await cursor.fetchall()
+
+
+@__with_connection
+async def delete_admin_with_id(conn: aiosqlite.Connection, id: str):
+    await conn.execute(
+        __DELETE_ADMIN_WITH_ID,
+        (id,),
+    )
+
+
+@__with_connection
+async def select_admins_without_flags(
+    conn: aiosqlite.Connection, flags: types.AdminFlags
+):
+    async with conn.execute(
+        __SELECT_ADMINS_WITHOUT_FLAGS,
+        (
+            flags,
+            flags,
+        ),
+    ) as cursor:
+        cursor.row_factory = admin_factory
+        return await cursor.fetchall()
+
+
+async def select_lowest_level_admins():
+    return await select_admins_without_flags(
+        types.AdminFlags.IS_SUPER | types.AdminFlags.IS_MAINTAINER
+    )
+
+
+@__with_connection
+async def select_maintainers_ids(conn: aiosqlite.Connection):
+    async with conn.execute(__SELECT_MAINTAINERS_USER_IDS) as cursor:
+        cursor.row_factory = single_element_factory
+        return await cursor.fetchall()
+
+
+@__with_connection
+async def update_error_listening_status(
+    conn: aiosqlite.Connection, id: str, state: bool
+):
+    cmd = (
+        __UPDATE_ENABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID
+        if state
+        else __UPDATE_DISABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID
+    )
+
+    await conn.execute(cmd, (id,))

@@ -107,12 +107,14 @@ async def log_and_recover(
     )
 
     # Sending data to dev
-    for chunk in split_message:
-        await context.bot.send_message(
-            chat_id=update.effective_user.id,
-            text=chunk,
-            parse_mode=ParseMode.HTML,
-        )
+    devs = await database.select_maintainers_ids()
+    for chat in devs:
+        for chunk in split_message:
+            await context.bot.send_message(
+                chat_id=chat,
+                text=chunk,
+                parse_mode=ParseMode.HTML,
+            )
 
     # Graceful error handling from the user's perspective
     await context.bot.send_message(

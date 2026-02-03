@@ -4,8 +4,9 @@ from telegram import Update
 
 # from telegram import constants as TelegramConstants
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
-from bot_utils import types, database, keyboards_gen
+from bot_utils import types, database, keyboards_gen, models
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 from bot_utils.menu_handlers import error_handling
 
@@ -17,7 +18,7 @@ def admin_no_longer_exists_error():
 
 
 async def update_admin_status(context: ContextTypes.DEFAULT_TYPE):
-    result = await database.get_admin_by_id(
+    result = await database.select_admin_with_id(
         context.chat_data[types.BotMemory.LOGGED_IN_AS].id
     )
     if result is None:
@@ -37,7 +38,7 @@ async def fail_if_admin_no_longer_exists(context: ContextTypes.DEFAULT_TYPE):
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
 async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    result = await database.authorise_admin_with_id(update.effective_user.id)
+    result = await database.select_admin_with_user_id(update.effective_user.id)
     if result is not None:
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result
         await update.message.reply_text(
@@ -79,10 +80,13 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.answer()
     query = update.callback_query
 
-    await update_admin_status(context)
+    await fail_if_admin_no_longer_exists(context)
 
     match int(query.data):
         case button if button == 0:  # Answer questions
+            raise NotImplementedError(
+                f"Most settings aren't ready yet (including answering questions)"
+            )
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.successful_login"),
                 reply_markup=keyboards_gen.generate_admin_main_menu(
@@ -136,6 +140,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.callback_query.answer()
     query = update.callback_query
 
+    await fail_if_admin_no_longer_exists(context)
+
     if int(query.data) == types.GO_BACK_CODE:
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
@@ -187,33 +193,6 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.admin_instructions"),
             )
-        # case button if button == persistent_dynamic.get(
-        #     "buttons.su_admin_settings.backup_db"
-        # ):
-        #     with open(types.FileNames.DB, "rb") as file:
-        #         await context.bot.send_document(
-        #             chat_id=update.effective_chat.id, document=file
-        #         )
-        #     await query.edit_message_text(
-        #         text=persistent_dynamic.get("buttons.su_admin_settings.backup_db")
-        #     )
-        # case button if button == persistent_dynamic.get(
-        #     "buttons.su_admin_settings.backup_logs"
-        # ):
-        #     with open(types.FileNames.LOG, "rb") as file:
-        #         await context.bot.send_document(
-        #             chat_id=update.effective_chat.id, document=file
-        #         )
-        #     await query.edit_message_text(
-        #         text=persistent_dynamic.get("buttons.su_admin_settings.backup_db")
-        #     )
-        # case button if button == persistent_dynamic.get(
-        #     "buttons.su_admin_settings.see_admin_names"
-        # ):
-        #     await query.edit_message_text(
-        #         text="\n".join(await database.get_all_admins_names())
-        #     )
-
         case any:
             raise NotImplementedError(
                 f"Most settings aren't ready yet (including {any})"
@@ -274,6 +253,8 @@ async def su_settings_callback(
     await update.callback_query.answer()
     query = update.callback_query
 
+    await fail_if_admin_no_longer_exists(context)
+
     if int(query.data) == types.GO_BACK_CODE:
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
@@ -286,10 +267,80 @@ async def su_settings_callback(
     match runtime_dynamic.get("keyboards.lists")[types.Keyboards.SU_ADMIN_SETTINGS][
         int(query.data)
     ]:
+        case button if button == persistent_dynamic.get(
+            "buttons.su_admin_settings.see_admin_names"
+        ):
+            await query.edit_message_text(
+                text="\n".join(
+                    [
+                        admin.public_name
+                        for admin in await database.select_admins_without_flags(
+                            types.AdminFlags.IS_MAINTAINER
+                        )
+                    ]
+                )
+            )
+        case button if button == persistent_dynamic.get(
+            "buttons.su_admin_settings.create_admin"
+        ):
+            password = models.AdminFactory.generate_admin_password()
+            admin: models.Admin = await models.AdminFactory.new_blank_admin(
+                persistent_dynamic.get("text.default_admin_name"), password
+            )
+            await database.insert_admin(admin)
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.new_admin_is")
+                + admin.public_name
+                + "```"
+                + password
+                + "```",
+                parse_mode=ParseMode.MARKDOWN_V2,
+            )
+        case button if button == persistent_dynamic.get(
+            "buttons.su_admin_settings.delete_admins"
+        ):
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.select_admin_to_delete"),
+                reply_markup=keyboards_gen.generate_inline_keyboard_with_custom_callback_data(
+                    {
+                        '"' + admin.public_name + '"': admin.id
+                        for admin in await database.select_lowest_level_admins()
+                    }
+                ),
+            )
+            return types.AdminState.SELECTING_ADMIN_TO_DELETE
         case any:
             raise NotImplementedError(
                 f"Most settings aren't ready yet (including {any})"
             )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=persistent_dynamic.get("text.su_admin_settings"),
+        reply_markup=runtime_dynamic.get("keyboards")[
+            types.Keyboards.SU_ADMIN_SETTINGS
+        ],
+    )
+
+    return types.AdminState.SU_SETTINGS
+
+
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
+async def delete_admin_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+    query = update.callback_query
+
+    try:
+        int(query.data)
+    except ValueError:
+        await database.delete_admin_with_id(query.data)
+        await query.edit_message_text(
+            text=persistent_dynamic.get("text.operation_success"),
+        )
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -311,6 +362,8 @@ async def maintainer_settings_callback(
     await update.callback_query.answer()
     query = update.callback_query
 
+    await fail_if_admin_no_longer_exists(context)
+
     if int(query.data) == types.GO_BACK_CODE:
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
@@ -323,6 +376,39 @@ async def maintainer_settings_callback(
     match runtime_dynamic.get("keyboards.lists")[types.Keyboards.MAINTAINER_SETTINGS][
         int(query.data)
     ]:
+        case button if button == persistent_dynamic.get(
+            "buttons.maintainer_settings.backup_db"
+        ):
+            with open(types.FileNames.DB, "rb") as file:
+                await context.bot.send_document(
+                    chat_id=update.effective_chat.id, document=file
+                )
+            await query.edit_message_text(
+                text=persistent_dynamic.get("buttons.maintainer_settings.backup_db")
+            )
+        case button if button == persistent_dynamic.get(
+            "buttons.maintainer_settings.backup_logs"
+        ):
+            with open(types.FileNames.LOG, "rb") as file:
+                await context.bot.send_document(
+                    chat_id=update.effective_chat.id, document=file
+                )
+            await query.edit_message_text(
+                text=persistent_dynamic.get("buttons.maintainer_settings.backup_logs")
+            )
+        case button if button == persistent_dynamic.get(
+            "buttons.maintainer_settings.listen_to_errors"
+        ):
+            admin = context.chat_data[types.BotMemory.LOGGED_IN_AS]
+            await database.update_error_listening_status(
+                admin.id, not (admin.flags & types.AdminFlags.LOG_ERRORS)
+            )
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.updated_error_listener_status")
+                + str(not (admin.flags & types.AdminFlags.LOG_ERRORS))
+            )
+            await update_admin_status(context)
+
         case any:
             raise NotImplementedError(
                 f"Most settings aren't ready yet (including {any})"
@@ -336,7 +422,7 @@ async def maintainer_settings_callback(
         ],
     )
 
-    return types.AdminState.SU_SETTINGS
+    return types.AdminState.MAINTAINER_SETTINGS
 
 
 @error_handling.log_on_error_and_return(
@@ -349,7 +435,9 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: Admin menu fallback", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.successful_login"),
-        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.ADMIN_MENU],
+        reply_markup=keyboards_gen.generate_admin_main_menu(
+            context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
+        ),
     )
     return types.AdminState.MAIN_MENU
 
