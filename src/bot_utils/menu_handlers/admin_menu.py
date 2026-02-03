@@ -16,8 +16,8 @@ def admin_no_longer_exists_error():
     raise Exception("Attempt to perform operation as a non-existent admin")
 
 
-def update_admin_status(context: ContextTypes.DEFAULT_TYPE):
-    result = database.get_admin_by_id(
+async def update_admin_status(context: ContextTypes.DEFAULT_TYPE):
+    result = await database.get_admin_by_id(
         context.chat_data[types.BotMemory.LOGGED_IN_AS].id
     )
     if result is None:
@@ -26,8 +26,10 @@ def update_admin_status(context: ContextTypes.DEFAULT_TYPE):
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result
 
 
-def fail_if_admin_no_longer_exists(context: ContextTypes.DEFAULT_TYPE):
-    if not database.admin_exists(context.chat_data[types.BotMemory.LOGGED_IN_AS].id):
+async def fail_if_admin_no_longer_exists(context: ContextTypes.DEFAULT_TYPE):
+    if not await database.admin_exists(
+        context.chat_data[types.BotMemory.LOGGED_IN_AS].id
+    ):
         admin_no_longer_exists_error()
 
 
@@ -35,7 +37,7 @@ def fail_if_admin_no_longer_exists(context: ContextTypes.DEFAULT_TYPE):
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
 async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    result = database.authorise_admin_with_id(update.effective_user.id)
+    result = await database.authorise_admin_with_id(update.effective_user.id)
     if result is not None:
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result
         await update.message.reply_text(
@@ -52,7 +54,9 @@ async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    result = database.authorise_new_admin(update.effective_user.id, update.message.text)
+    result = await database.authorise_new_admin(
+        update.effective_user.id, update.message.text
+    )
     if result is None:
         await update.message.reply_text(
             text=persistent_dynamic.get("text.return_to_main_menu"),
@@ -75,7 +79,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.callback_query.answer()
     query = update.callback_query
 
-    update_admin_status(context)
+    await update_admin_status(context)
 
     match int(query.data):
         case button if button == 0:  # Answer questions
@@ -207,7 +211,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         #     "buttons.su_admin_settings.see_admin_names"
         # ):
         #     await query.edit_message_text(
-        #         text="\n".join(database.get_all_admins_names())
+        #         text="\n".join(await database.get_all_admins_names())
         #     )
 
         case any:
@@ -228,8 +232,8 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
 async def update_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    fail_if_admin_no_longer_exists(context)
-    database.update_admin_name(
+    await fail_if_admin_no_longer_exists(context)
+    await database.update_admin_name(
         update.message.text, context.chat_data[types.BotMemory.LOGGED_IN_AS].id
     )
     await update.message.reply_text(
@@ -246,7 +250,7 @@ async def select_department(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.callback_query.answer()
     query = update.callback_query
 
-    fail_if_admin_no_longer_exists(context)
+    await fail_if_admin_no_longer_exists(context)
 
     if int(query.data) != types.GO_BACK_CODE:
         context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT] = (
@@ -340,7 +344,7 @@ async def maintainer_settings_callback(
 )
 async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Returns user to main menu and sends an appropariate message"""
-    fail_if_admin_no_longer_exists(context)
+    await fail_if_admin_no_longer_exists(context)
 
     logging.debug("%d: Admin menu fallback", update.effective_user.id)
     await update.message.reply_text(

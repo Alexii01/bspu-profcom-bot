@@ -7,7 +7,7 @@ from telegram import (
 )
 from telegram import Update
 
-from bot_utils import types, database
+from bot_utils import types, models, database
 from bot_utils.dynamic_data import persistent_dynamic
 
 
@@ -56,17 +56,19 @@ def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
     )
 
 
-def generate_users_message_keyboard(
+async def generate_users_message_keyboard(
     update: Update,
 ) -> InlineKeyboardMarkup | None:
-    questions = database.get_questions_from_user(update.effective_user.id)
+    questions: Iterable[models.Question] = await database.get_questions_from_user(
+        update.effective_user.id
+    )
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=" ".join(question[6].split()[:5]),
-                    callback_data=str(question[0]),
+                    text=" ".join(question.message.split()[:5]),
+                    callback_data=str(question.id),
                 )
             ]
             for question in questions

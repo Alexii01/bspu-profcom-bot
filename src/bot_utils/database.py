@@ -1,5 +1,6 @@
 import logging
-import sqlite3
+import aiosqlite
+import asyncio
 import bcrypt
 import functools
 from typing import Iterable
@@ -24,7 +25,7 @@ __MAKE_SCHEMA = f"""
         user_id INT,
         chat_id INT,
         department TEXT,
-        asked_date TEXT
+        asked_date TEXT,
         answered_by INT,
         answered_date TEXT,
         message TEXT
@@ -62,7 +63,7 @@ __ADMIN_WITH_ID_EXISTS = f"""
 __SELECT_QUESTIONS_FROM_USER = (
     f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE user_id=?"
 )
-__SELECT_QUESTIONS_BY_ID = f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
+__SELECT_QUESTION_BY_ID = f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
 
 __DELETE_QUESTIONS_BY_ID = f"DELETE FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
 
@@ -78,7 +79,7 @@ __UPDATE_ADMIN_NAME_WITH_ID = (
 )
 
 
-def admin_factory(cursor: sqlite3.Cursor, admin: tuple):
+def admin_factory(conn: aiosqlite.Connection, admin: tuple):
     return models.Admin(
         id=admin[0],
         public_name=admin[1],
@@ -89,7 +90,7 @@ def admin_factory(cursor: sqlite3.Cursor, admin: tuple):
     )
 
 
-def question_factory(cursor: sqlite3.Cursor, question: tuple):
+def question_factory(conn: aiosqlite.Connection, question: tuple):
     return models.Question(
         id=question[0],
         user_id=question[1],
@@ -104,41 +105,41 @@ def question_factory(cursor: sqlite3.Cursor, question: tuple):
 
 def __with_connection(func):
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        connection = sqlite3.connect(types.FileNames.DB)
-        cursor = connection.cursor()
-        try:
-            result = func(cursor, *args, **kwargs)
-            connection.commit()
-        except Exception as e:
-            logging.error(f"{type(e).__name__:} {e}")
-            raise e
-        finally:
-            connection.close()
+    async def wrapper(*args, **kwargs):
+        async with aiosqlite.connect(types.FileNames.DB) as connection:
+            try:
+                result = await func(connection, *args, **kwargs)
+                await connection.commit()
+            except Exception as e:
+                logging.error(f"{type(e).__name__:} {e}")
+                raise e
 
-        return result
+            return result
 
     return wrapper
 
 
 @__with_connection
-def insert_question(cursor: sqlite3.Cursor, question: models.Question):
-    cursor.execute(
+async def insert_question(conn: aiosqlite.Connection, question: models.Question):
+    await conn.execute(
         __INSERT_QUESTION,
         (
             str(question.id),
-            question.user_id.id,
-            question.asked_date,
+            question.user_id,
+            question.chat_id,
             question.department_id,
-            question.answered_by.id if question.answered_by else None,
-            question.answered_date if question.answered_date else None,
+            question.asked_date,
+            question.answered_by,
+            question.answered_date,
             question.message,
         ),
     )
 
 
-def insert_admin_with_existing_cursor(cursor: sqlite3.Cursor, admin: models.Admin):
-    cursor.execute(
+async def insert_admin_with_existing_connection(
+    conn: aiosqlite.Connection, admin: models.Admin
+):
+    await conn.execute(
         __INSERT_ADMIN,
         (
             str(admin.id),
@@ -152,8 +153,8 @@ def insert_admin_with_existing_cursor(cursor: sqlite3.Cursor, admin: models.Admi
 
 
 @__with_connection
-def insert_admin(cursor: sqlite3.Cursor, admin: models.Admin):
-    insert_admin_with_existing_cursor(cursor, admin)
+async def insert_admin(conn: aiosqlite.Connection, admin: models.Admin):
+    await insert_admin_with_existing_connection(conn, admin)
 
 
 @decorators.define_log(
@@ -162,8 +163,8 @@ def insert_admin(cursor: sqlite3.Cursor, admin: models.Admin):
     begin="Verifying db schema",
     end="DB schema is set",
 )
-def __create_tables_if_not_present(cursor: sqlite3.Cursor):
-    cursor.executescript(__MAKE_SCHEMA)
+async def __create_tables_if_not_present(conn: aiosqlite.Connection):
+    await conn.executescript(__MAKE_SCHEMA)
 
 
 @decorators.conditional_log(
@@ -172,14 +173,13 @@ def __create_tables_if_not_present(cursor: sqlite3.Cursor):
     if_true="Superuser admin exists",
     if_false="No superuser admin exists!",
 )
-def __super_maintainer_exists(cursor: sqlite3.Cursor):
-    return cursor.execute(
-        __SUPERUSER_MAINTAINER_EXISTS,
-    ).fetchone()[0]
+async def __super_maintainer_exists(conn: aiosqlite.Connection):
+    async with conn.execute(__SUPERUSER_MAINTAINER_EXISTS) as cursor:
+        return (await cursor.fetchone())[0]
 
 
-def __create_super_maintainer_if_not_present(cursor: sqlite3.Cursor):
-    if not __super_maintainer_exists(cursor):
+async def __create_super_maintainer_if_not_present(conn: aiosqlite.Connection):
+    if not await __super_maintainer_exists(conn):
         # Create super admin
         password = models.AdminFactory.generate_admin_password()
         su = models.AdminFactory.new_admin(
@@ -190,7 +190,7 @@ def __create_super_maintainer_if_not_present(cursor: sqlite3.Cursor):
             file.write(password)
         del password
         # Add to db
-        insert_admin_with_existing_cursor(cursor, su)
+        await insert_admin_with_existing_connection(conn, su)
         del su
         logger.info("Superuser admin created!")
 
@@ -202,98 +202,99 @@ def __create_super_maintainer_if_not_present(cursor: sqlite3.Cursor):
     end="Database setup verified",
 )
 @__with_connection
-def setup_sqlite_db(cursor: sqlite3.Cursor):
-    __create_tables_if_not_present(cursor)
-    __create_super_maintainer_if_not_present(cursor)
+async def __setup_sqlite_db(conn: aiosqlite.Connection):
+    await __create_tables_if_not_present(conn)
+    await __create_super_maintainer_if_not_present(conn)
+
+
+def setup_sqlite_db():
+    asyncio.run(__setup_sqlite_db())
 
 
 @__with_connection
-def get_questions_from_user(
-    cursor: sqlite3.Cursor, user_id: int
+async def get_questions_from_user(
+    conn: aiosqlite.Connection, user_id: int
 ) -> Iterable[models.Question]:
-    cursor.row_factory = question_factory
-    return cursor.execute(
-        __SELECT_QUESTIONS_FROM_USER,
-        (user_id,),
-    ).fetchall()
+    conn.row_factory = question_factory
+    async with conn.execute(__SELECT_QUESTIONS_FROM_USER, (user_id,)) as cursor:
+        return await cursor.fetchall()
 
 
 @__with_connection
-def get_question_by_id(cursor: sqlite3.Cursor, id: str) -> models.Question:
-    cursor.row_factory = question_factory
-    return cursor.execute(
-        __SELECT_QUESTIONS_BY_ID,
-        (id,),
-    ).fetchone()
+async def get_question_by_id(conn: aiosqlite.Connection, id: str) -> models.Question:
+    conn.row_factory = question_factory
+    async with conn.execute(__SELECT_QUESTION_BY_ID, (id,)) as cursor:
+        return await cursor.fetchone()
 
 
 @__with_connection
-def delete_question_by_id(cursor: sqlite3.Cursor, id: str):
-    cursor.execute(__DELETE_QUESTIONS_BY_ID, (id,))
+async def delete_question_by_id(conn: aiosqlite.Connection, id: str):
+    await conn.execute(__DELETE_QUESTIONS_BY_ID, (id,))
 
 
 @__with_connection
-def get_admin_by_id(cursor: sqlite3.Cursor, id: str) -> models.Admin:
-    cursor.row_factory = admin_factory
-    return cursor.execute(
-        __SELECT_ADMIN_BY_ID,
-        (id,),
-    ).fetchone()
+async def get_admin_by_id(conn: aiosqlite.Connection, id: str) -> models.Admin:
+    conn.row_factory = admin_factory
+    async with conn.execute(__SELECT_ADMIN_BY_ID, (id,)) as cursor:
+        return await cursor.fetchone()
 
 
 @__with_connection
-def authorise_admin_with_id(cursor: sqlite3.Cursor, user_id: int) -> models.Admin:
-    cursor.row_factory = admin_factory
-    result = cursor.execute(
-        __SELECT_ADMIN_WITH_ID,
-        (user_id,),
-    ).fetchone()
-    return result if result else None
-
-
-@__with_connection
-def authorise_new_admin(
-    cursor: sqlite3.Cursor, user_id: int, password: str
+async def authorise_admin_with_id(
+    conn: aiosqlite.Connection, user_id: int
 ) -> models.Admin:
-    cursor.row_factory = admin_factory
-    results = cursor.execute(__SELECT_ADMINS_WITHOUT_ASSOCIATED_USER).fetchall()
+    conn.row_factory = admin_factory
+    async with conn.execute(__SELECT_ADMIN_WITH_ID, (user_id,)) as cursor:
+        result = await cursor.fetchone()
+        return result if result else None
 
-    for result in results:
-        if bcrypt.checkpw(password.encode("ascii"), result["password_hash"]):
-            cursor.execute(
-                __UPDATE_ADMIN_USER_ID_WITH_ID,
-                (
-                    user_id,
-                    result["id"],
-                ),
-            )
-            return result
+
+@__with_connection
+async def authorise_new_admin(
+    conn: aiosqlite.Connection, user_id: int, password: str
+) -> models.Admin:
+    conn.row_factory = admin_factory
+    async with conn.execute(__SELECT_ADMINS_WITHOUT_ASSOCIATED_USER) as cursor:
+        async for row in cursor:
+            if bcrypt.checkpw(password.encode("ascii"), row.password_hash):
+                await conn.execute(
+                    __UPDATE_ADMIN_USER_ID_WITH_ID,
+                    (
+                        user_id,
+                        row.id,
+                    ),
+                )
+                return row
     return None
 
 
 @__with_connection
-def admin_has_flags(cursor: sqlite3.Cursor, id: str, flags: types.AdminFlags) -> bool:
-    return cursor.execute(
+async def admin_has_flags(
+    conn: aiosqlite.Connection, id: str, flags: types.AdminFlags
+) -> bool:
+    async with conn.execute(
         __ADMIN_WITH_ID_AND_FLAGS_EXISTS,
         (
             id,
             flags,
             flags,
         ),
-    ).fetchone()[0]
+    ) as cursor:
+        return (await cursor.fetchone())[0]
 
 
 @__with_connection
-def admin_exists(cursor: sqlite3.Cursor, id: str) -> bool:
-    return cursor.execute(
+async def admin_exists(conn: aiosqlite.Connection, id: str) -> bool:
+    async with conn.execute(
         __ADMIN_WITH_ID_EXISTS,
         (id,),
-    ).fetchone()[0]
+    ) as cursor:
+        return (await cursor.fetchone())[0]
 
 
 @__with_connection
-def update_admin_name(cursor: sqlite3.Cursor, name: str, id: str):
-    cursor.execute(
+async def update_admin_name(conn: aiosqlite.Connection, name: str, id: str):
+    await conn.execute(
         __UPDATE_ADMIN_NAME_WITH_ID,
         (
             name,
