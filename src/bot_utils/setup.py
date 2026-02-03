@@ -63,6 +63,12 @@ def generate_conversation_handler():
             types.AdminState.SELECTING_DEPARTMENT: [
                 CallbackQueryHandler(admin_menu.select_department)
             ],
+            types.AdminState.SU_SETTINGS: [
+                CallbackQueryHandler(admin_menu.su_settings_callback)
+            ],
+            types.AdminState.MAINTAINER_SETTINGS: [
+                CallbackQueryHandler(admin_menu.maintainer_settings_callback)
+            ],
         },
         fallbacks=[
             MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.fallback)
@@ -189,9 +195,6 @@ def update_keyboards():
         types.Keyboards.VIEW_MESSAGE: keyboards_gen.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.view_question_menu").values()
         ),
-        types.Keyboards.ADMIN_MENU: keyboards_gen.generate_inline_keyboard(
-            persistent_dynamic.get("buttons.admin_menu").values()
-        ),
         types.Keyboards.ADMIN_ANSWER_MENU: keyboards_gen.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.admin_answer_menu").values()
         ),
@@ -199,10 +202,10 @@ def update_keyboards():
             persistent_dynamic.get("buttons.admin_settings").values()
         ),
         types.Keyboards.SU_ADMIN_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
-            (
-                persistent_dynamic.get("buttons.admin_settings")
-                | persistent_dynamic.get("buttons.su_admin_settings")
-            ).values()
+            persistent_dynamic.get("buttons.su_admin_settings").values()
+        ),
+        types.Keyboards.MAINTAINER_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
+            persistent_dynamic.get("buttons.maintainer_settings").values()
         ),
         types.Keyboards.GO_BACK: keyboards_gen.generate_inline_keyboard_with_return([]),
         "lists": {
@@ -215,9 +218,6 @@ def update_keyboards():
             types.Keyboards.VIEW_MESSAGE: list(
                 persistent_dynamic.get("buttons.view_question_menu").values()
             ),
-            types.Keyboards.ADMIN_MENU: list(
-                persistent_dynamic.get("buttons.admin_menu").values()
-            ),
             types.Keyboards.ADMIN_ANSWER_MENU: list(
                 persistent_dynamic.get("buttons.admin_answer_menu").values()
             ),
@@ -225,10 +225,10 @@ def update_keyboards():
                 persistent_dynamic.get("buttons.admin_settings").values()
             ),
             types.Keyboards.SU_ADMIN_SETTINGS: list(
-                (
-                    persistent_dynamic.get("buttons.admin_settings")
-                    | persistent_dynamic.get("buttons.su_admin_settings")
-                ).values()
+                persistent_dynamic.get("buttons.su_admin_settings").values()
+            ),
+            types.Keyboards.MAINTAINER_SETTINGS: list(
+                persistent_dynamic.get("buttons.maintainer_settings").values()
             ),
         },
     }

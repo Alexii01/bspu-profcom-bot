@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum, StrEnum, auto
+from enum import Enum, IntEnum, StrEnum, IntFlag, auto
 
 # For every question there is a notification
 # Admins can answer questions in a spree
@@ -70,9 +70,18 @@ class AdminState(Enum):
     LOGIN = auto()
     MAIN_MENU = auto()
     SETTINGS = auto()
+    SU_SETTINGS = auto()
+    MAINTAINER_SETTINGS = auto()
     CHANGING_TEXT = auto()
     ENTERING_NAME = auto()
     SELECTING_DEPARTMENT = auto()
+
+
+class AdminFlags(IntFlag):
+    IS_SUPER = 1
+    IS_MAINTAINER = 2
+    NAME_UPDATES = 4
+    LOG_ERRORS = 8
 
 
 class Keyboards(Enum):
@@ -80,9 +89,9 @@ class Keyboards(Enum):
     QUESTION_MENU = auto()
     DEPARTMENTS = auto()
     VIEW_MESSAGE = auto()
-    ADMIN_MENU = auto()
     ADMIN_SETTINGS = auto()
     SU_ADMIN_SETTINGS = auto()
+    MAINTAINER_SETTINGS = auto()
     ADMIN_ANSWER_MENU = auto()
     GO_BACK = auto()
 
@@ -104,21 +113,10 @@ class DatabaseTables(StrEnum):
     ADMINS = "admins"
 
 
-class AdminAttributes(StrEnum):
-    UUID = "uuid"
-    NAME = "public_name"
-    USER = "telegram_user"
-    PWD = "password_hash"
-    IS_SUPER = "is_super"
-    IS_MAINTAINER = "is_maintainer"
-    NAMES_NEWSLETTER = "name_updates_newsletter"
-    ERROR_NEWLSETTER = "error_newsletter"
-
-
 class FileNames(StrEnum):
     CONFIG = "config.ini"
     PERSISTENCE = "persistence.bin"
     DEFAULTS = "defaults.json"
     DB = "data.db"
-    FIRST_SU_PASSWORD = "db_setup.log"
+    FIRST_SU_PASSWORD = "su.log"
     LOG = "rotating.log"

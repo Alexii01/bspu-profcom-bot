@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 from uuid import uuid4, UUID
 from datetime import datetime
-from typing import Final
 import secrets
 import string
 
-from telegram import User
 import bcrypt
 
 from bot_utils import types
@@ -13,21 +11,24 @@ from bot_utils import types
 
 @dataclass
 class Question:
-    uuid: UUID
-    asked_by: User
-    asked_date: datetime
+    id: UUID
+    user_id: int | None
+    chat_id: int | None
     department_id: int
-    answered_by: User | None
-    answered_date: datetime | None
+    asked_date: str | datetime
+    answered_by: int | None
+    answered_date: str | datetime | None
     message: str
 
 
 @dataclass
 class Admin:
-    uuid: UUID | str
+    id: UUID | str
     public_name: str
-    telegram_user: User | None
+    user_id: int | None
+    chat_id: int | None
     password_hash: str
+    flags: types.AdminFlags
 
 
 class AdminFactory:
@@ -46,12 +47,14 @@ class AdminFactory:
             types.PasswordFormat.PARTS, types.PasswordFormat.PART_LENGTH
         )
 
-    def new_admin(name: str, password: str) -> Admin:
+    def new_admin(name: str, password: str, flags: types.AdminFlags | None) -> Admin:
         return Admin(
-            uuid=uuid4(),
+            id=uuid4(),
             public_name=name,
-            telegram_user=None,
+            user_id=None,
+            chat_id=None,
             password_hash=bcrypt.hashpw(
                 password.encode("ascii"), bcrypt.gensalt(rounds=15)
             ),
+            flags=flags if flags else 0,
         )

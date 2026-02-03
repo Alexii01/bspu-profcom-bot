@@ -20,8 +20,9 @@ def split_message_into_valid_chunks(msg: str, max_chunk_length: int) -> Iterable
     begin = 0
     end = min(msg_len, max_chunk_length)
 
+    counter = 0
     pending_chunk = ""
-    while begin < msg_len:
+    while begin < msg_len and counter < 50:
         if msg.startswith("<pre>", begin, end):
             # If we're parsing a pre block, set it as a chunk if it fits or skip
             split_pos = msg.rfind("</pre>", begin, end)
@@ -61,6 +62,7 @@ def split_message_into_valid_chunks(msg: str, max_chunk_length: int) -> Iterable
             pending_chunk = new_chunk
 
         new_chunk = ""
+        counter += 1
 
     if pending_chunk != "":
         chunks.append(pending_chunk)
@@ -85,6 +87,7 @@ async def log_and_recover(
         f"{type(error).__name__}({error})\n"
         "An exception was raised while handling an update\n"
         f"update = {json.dumps(update_str, indent=2, ensure_ascii=False)}\n\n"
+        f"context.bot_data = {str(context.bot_data)}\n\n"
         f"context.chat_data = {str(context.chat_data)}\n\n"
         f"context.user_data = {str(context.user_data)}\n\n"
         f"{tb_string}"
@@ -94,6 +97,7 @@ async def log_and_recover(
         "An exception was raised while handling an update\n"
         f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
         "</pre>\n\n"
+        f"<pre>context.bot_data = {html.escape(str(context.bot_data))}</pre>\n\n"
         f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
         f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"

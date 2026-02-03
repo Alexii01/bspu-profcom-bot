@@ -5,7 +5,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
-from telegram.ext import ContextTypes
+from telegram import Update
 
 from bot_utils import types, database
 from bot_utils.dynamic_data import persistent_dynamic
@@ -57,11 +57,11 @@ def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
 
 
 def generate_users_message_keyboard(
-    context: ContextTypes.DEFAULT_TYPE,
+    update: Update,
 ) -> InlineKeyboardMarkup | None:
-    questions = database.get_questions_from_user(context._user_id)
+    questions = database.get_questions_from_user(update.effective_user.id)
 
-    messages_keyboard = InlineKeyboardMarkup(
+    return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
@@ -73,4 +73,43 @@ def generate_users_message_keyboard(
         ]
     )
 
-    return messages_keyboard
+
+def generate_admin_main_menu(flags: types.AdminFlags):
+    extras = []
+
+    if flags & types.AdminFlags.IS_SUPER:
+        extras += [
+            [
+                InlineKeyboardButton(
+                    text=persistent_dynamic.get("buttons.optional_settings.su"),
+                    callback_data=2,
+                )
+            ]
+        ]
+    if flags & types.AdminFlags.IS_MAINTAINER:
+        extras += [
+            [
+                InlineKeyboardButton(
+                    text=persistent_dynamic.get("buttons.optional_settings.maintainer"),
+                    callback_data=3,
+                )
+            ]
+        ]
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=persistent_dynamic.get("buttons.admin_menu.answer_questions"),
+                    callback_data=0,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=persistent_dynamic.get("buttons.admin_menu.settings"),
+                    callback_data=1,
+                )
+            ],
+        ]
+        + extras
+    )

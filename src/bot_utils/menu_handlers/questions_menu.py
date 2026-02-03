@@ -65,7 +65,7 @@ async def main_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         ):
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.view_user_questions"),
-                reply_markup=keyboards_gen.generate_users_message_keyboard(context),
+                reply_markup=keyboards_gen.generate_users_message_keyboard(update),
             )
             return types.QuestionState.QUESTION_VIEW_MENU
 
@@ -118,7 +118,7 @@ async def view_msg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # TODO: Avoid using two separate messages, merge and split only if necessary
     await update.callback_query.edit_message_text(
         text=persistent_dynamic.get("text.inspect_user_question")
-        + database.get_question_by_uuid(update.callback_query.data)[6],
+        + database.get_question_by_id(update.callback_query.data).message,
     )
 
     await update.get_bot().send_message(
@@ -158,7 +158,7 @@ async def questions_list_callback(
         case button if button == persistent_dynamic.get(
             "buttons.view_question_menu.delete"
         ):
-            database.delete_question_by_uuid(msg_uuid)
+            database.delete_question_by_id(msg_uuid)
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.questions_menu"),
                 reply_markup=runtime_dynamic.get("keyboards")[
@@ -189,8 +189,8 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return types.QuestionState.MAIN_MENU
 
     question = Question(
-        uuid=uuid4(),
-        asked_by=update.effective_user,
+        id=uuid4(),
+        user_id=update.effective_user,
         asked_date=update.message.date,
         department_id=department_id,
         answered_by=None,
@@ -198,9 +198,9 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         message=update.message.text,
     )
 
-    database.insert_quesion(question)
+    database.insert_question(question)
 
-    logging.debug("%d: New question %s", question.asked_by.id, question.uuid)
+    logging.debug("%d: New question %s", question.user_id.id, question.id)
 
     await update.message.reply_text(
         text=persistent_dynamic.get("text.thanks_for_question"),
