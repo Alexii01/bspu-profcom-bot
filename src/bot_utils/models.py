@@ -13,7 +13,7 @@ from bot_utils import types
 class Question:
     id: UUID
     user_id: int | None
-    department_id: int
+    department_id: str
     asked_date: str | datetime
     answered_by: int | None
     answered_date: str | datetime | None

@@ -80,7 +80,9 @@ class AdminState(Enum):
     MAINTAINER_SETTINGS = auto()
     CHANGING_TEXT = auto()
     ENTERING_NAME = auto()
+    ENTERING_DEPARTMENT_NAME = auto()
     SELECTING_DEPARTMENT = auto()
+    SELECTING_DEPARTMENT_TO_DELETE = auto()
     SELECTING_ADMIN_TO_DELETE = auto()
 
 

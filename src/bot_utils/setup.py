@@ -66,6 +66,15 @@ def generate_conversation_handler():
             types.AdminState.SU_SETTINGS: [
                 CallbackQueryHandler(admin_menu.su_settings_callback)
             ],
+            types.AdminState.ENTERING_DEPARTMENT_NAME: [
+                CallbackQueryHandler(admin_menu.return_to_su_settings),
+                MessageHandler(
+                    filters=msg_filters.TEXT, callback=admin_menu.new_department
+                ),
+            ],
+            types.AdminState.SELECTING_DEPARTMENT_TO_DELETE: [
+                CallbackQueryHandler(admin_menu.delete_department_callback)
+            ],
             types.AdminState.SELECTING_ADMIN_TO_DELETE: [
                 CallbackQueryHandler(admin_menu.delete_admin_callback)
             ],
@@ -129,7 +138,6 @@ def generate_conversation_handler():
             types.AdminState.MAIN_MENU: [admin_conv_handler],
             types.MainMenuState.MAIN_MENU: [
                 admin_conv_handler,
-                question_conv_handler,
                 MessageHandler(
                     filters=msg_filters.Regex(
                         pattern="^"
@@ -154,6 +162,7 @@ def generate_conversation_handler():
                     ),
                     callback=main_menu.socials,
                 ),
+                question_conv_handler,
             ],
             types.MainMenuState.ERROR_ENCOUNTERED: [
                 CallbackQueryHandler(callback=main_menu.return_to_main_menu)
@@ -192,8 +201,8 @@ def update_keyboards():
         types.Keyboards.QUESTION_MENU: keyboards_gen.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.questions_menu").values()
         ),
-        types.Keyboards.DEPARTMENTS: keyboards_gen.generate_inline_keyboard_with_return(
-            persistent_dynamic.get("departments").values()
+        types.Keyboards.DEPARTMENTS: keyboards_gen.generate_inline_keyboard_with_custom_callback_data_and_return(
+            {value: key for key, value in persistent_dynamic.get("departments").items()}
         ),
         types.Keyboards.VIEW_MESSAGE: keyboards_gen.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.view_question_menu").values()

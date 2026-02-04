@@ -1,4 +1,5 @@
 import logging
+from multiprocessing import Value
 from uuid import uuid4
 
 from telegram import Update
@@ -83,25 +84,21 @@ async def department_selected(
     await query.answer()
 
     logging.debug("%d: Expert query %s", update.effective_user.id, query.data)
-
-    if int(query.data) == types.GO_BACK_CODE:
-        await query.edit_message_text(
-            text=persistent_dynamic.get("text.questions_menu"),
-            reply_markup=runtime_dynamic.get("keyboards")[
-                types.Keyboards.QUESTION_MENU
-            ],
-        )
-        return types.QuestionState.MAIN_MENU
-
-    match runtime_dynamic.get("keyboards.lists")[types.Keyboards.DEPARTMENTS][
-        int(query.data)
-    ]:
-        case expert:
-            context.chat_data[types.BotMemory.SELECTED_DEPARTMENT] = expert
+    try:
+        if int(query.data) == types.GO_BACK_CODE:
             await query.edit_message_text(
-                text=persistent_dynamic.get("text.now_ask_question")
+                text=persistent_dynamic.get("text.questions_menu"),
+                reply_markup=runtime_dynamic.get("keyboards")[
+                    types.Keyboards.QUESTION_MENU
+                ],
             )
-            return types.QuestionState.ASKING_QUESTION
+            return types.QuestionState.MAIN_MENU
+    except ValueError:
+        pass
+
+    context.chat_data[types.BotMemory.SELECTED_DEPARTMENT] = query.data
+    await query.edit_message_text(text=persistent_dynamic.get("text.now_ask_question"))
+    return types.QuestionState.ASKING_QUESTION
 
 
 @error_handling.log_on_error_and_return(
@@ -193,8 +190,8 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     question = Question(
         id=uuid4(),
         user_id=update.effective_user.id,
-        asked_date=update.message.date,
         department_id=department_id,
+        asked_date=update.message.date,
         answered_by=None,
         answered_date=None,
         message=update.message.text,

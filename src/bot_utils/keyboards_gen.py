@@ -34,7 +34,7 @@ def generate_inline_keyboard(keyboard_options: Iterable[str]):
     )
 
 
-def generate_inline_keyboard_with_custom_callback_data(data: Dict[str, str]):
+def generate_inline_keyboard_with_custom_callback_data_and_return(data: Dict[str, str]):
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=str(key), callback_data=value)]

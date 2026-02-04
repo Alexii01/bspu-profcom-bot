@@ -67,7 +67,9 @@ __ADMIN_WITH_ID_EXISTS = f"""
         WHERE id=?
     )
     """
-
+__SELECT_OLDEST_QUESTION = (
+    f"SELECT * FROM {types.DatabaseTables.QUESTIONS} LIMIT 1 ORDER BY asked_date"
+)
 __SELECT_QUESTIONS_FROM_USER = (
     f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE user_id=?"
 )
@@ -395,3 +397,10 @@ async def update_error_listening_status(
     )
 
     await conn.execute(cmd, (id,))
+
+
+@__with_connection
+async def select_oldest_question(conn: aiosqlite.Connection):
+    async with conn.execute(__SELECT_OLDEST_QUESTION) as cursor:
+        cursor.row_factory = question_factory
+        return await cursor.fetchone()

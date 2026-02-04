@@ -1,4 +1,6 @@
 import logging
+import hashlib
+from multiprocessing import Value
 
 from telegram import Update
 
@@ -84,9 +86,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     match int(query.data):
         case button if button == 0:  # Answer questions
-            raise NotImplementedError(
-                f"Most settings aren't ready yet (including answering questions)"
-            )
+            # TODO: WORKING HERE
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.successful_login"),
                 reply_markup=keyboards_gen.generate_admin_main_menu(
@@ -301,7 +301,7 @@ async def su_settings_callback(
         ):
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.select_admin_to_delete"),
-                reply_markup=keyboards_gen.generate_inline_keyboard_with_custom_callback_data(
+                reply_markup=keyboards_gen.generate_inline_keyboard_with_custom_callback_data_and_return(
                     {
                         '"' + admin.public_name + '"': admin.id
                         for admin in await database.select_lowest_level_admins()
@@ -309,6 +309,27 @@ async def su_settings_callback(
                 ),
             )
             return types.AdminState.SELECTING_ADMIN_TO_DELETE
+        case button if button == persistent_dynamic.get(
+            "buttons.su_admin_settings.add_department"
+        ):
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.enter_department_name"),
+                reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.GO_BACK],
+            )
+            return types.AdminState.ENTERING_DEPARTMENT_NAME
+        case button if button == persistent_dynamic.get(
+            "buttons.su_admin_settings.remove_department"
+        ):
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.select_admin_to_delete"),
+                reply_markup=keyboards_gen.generate_inline_keyboard_with_custom_callback_data_and_return(
+                    {
+                        '"' + name + '"': key
+                        for key, name in persistent_dynamic.get("departments").items()
+                    }
+                ),
+            )
+            return types.AdminState.SELECTING_DEPARTMENT_TO_DELETE
         case any:
             raise NotImplementedError(
                 f"Most settings aren't ready yet (including {any})"
@@ -350,6 +371,78 @@ async def delete_admin_callback(
         ],
     )
 
+    return types.AdminState.SU_SETTINGS
+
+
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
+async def new_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    dept_name = update.message.text
+
+    processed_dept_name = "".join(dept_name.casefold().split())
+
+    dept_name_hash = hashlib.sha256(processed_dept_name.encode("utf-8")).hexdigest()
+    # TODO: Remove the debugging shiet and make smaller
+    await update.message.reply_text(
+        text=processed_dept_name
+        + "\n"
+        + dept_name_hash
+        + "\n"
+        + str(len(dept_name_hash.encode("utf-8"))),
+    )
+
+    persistent_dynamic.get("departments").update({dept_name_hash: dept_name})
+    persistent_dynamic.get("old_departments").pop(dept_name_hash, None)
+    persistent_dynamic.dump(types.FileNames.DEFAULTS)
+
+    await update.message.reply_text(
+        text=persistent_dynamic.get("text.su_admin_settings"),
+        reply_markup=runtime_dynamic.get("keyboards")[
+            types.Keyboards.SU_ADMIN_SETTINGS
+        ],
+    )
+
+    return types.AdminState.SU_SETTINGS
+
+
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+)
+async def delete_department_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+    query = update.callback_query
+
+    await fail_if_admin_no_longer_exists(context)
+    try:
+        if int(query.data) == types.GO_BACK_CODE:
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.su_admin_settings"),
+                reply_markup=runtime_dynamic.get("keyboards")[
+                    types.Keyboards.SU_ADMIN_SETTINGS
+                ],
+            )
+            return types.AdminState.SU_SETTINGS
+    except ValueError:
+        pass
+
+    value = persistent_dynamic.get("departments").pop(query.data)
+    persistent_dynamic.get("old_departments").update({query.data: value})
+    persistent_dynamic.dump(types.FileNames.DEFAULTS)
+
+    await query.edit_message_text(
+        text=persistent_dynamic.get("text.operation_success"),
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=persistent_dynamic.get("text.su_admin_settings"),
+        reply_markup=runtime_dynamic.get("keyboards")[
+            types.Keyboards.SU_ADMIN_SETTINGS
+        ],
+    )
     return types.AdminState.SU_SETTINGS
 
 
@@ -440,6 +533,20 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         ),
     )
     return types.AdminState.MAIN_MENU
+
+
+async def return_to_su_settings(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+
+    await update.callback_query.edit_message_text(
+        text=persistent_dynamic.get("text.su_admin_settings"),
+        reply_markup=runtime_dynamic.get("keyboards")[
+            types.Keyboards.SU_ADMIN_SETTINGS
+        ],
+    )
+    return types.AdminState.SU_SETTINGS
 
 
 async def return_to_main_menu(
