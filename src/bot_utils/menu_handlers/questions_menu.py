@@ -1,9 +1,9 @@
 import logging
-from multiprocessing import Value
 from uuid import uuid4
 
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.constants import ParseMode
 
 from bot_utils.models import Question
 from bot_utils import types, database, keyboards_gen
@@ -118,6 +118,7 @@ async def view_msg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await update.callback_query.edit_message_text(
         text=persistent_dynamic.get("text.inspect_user_question")
         + (await database.select_question_by_id(update.callback_query.data)).message,
+        parse_mode=ParseMode.MARKDOWN_V2,
     )
 
     await update.get_bot().send_message(
@@ -174,10 +175,12 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Parses and saves user's question, sending them back to question menu"""
     department_id = context.chat_data[types.BotMemory.SELECTED_DEPARTMENT]
     del context.chat_data[types.BotMemory.SELECTED_DEPARTMENT]
-
-    if len(update.message.text) < 20:
+    message_len = len(update.message.text)
+    if message_len < 20 or message_len > 3000:
         await update.message.reply_text(
             text=persistent_dynamic.get("text.question_too_short")
+            if message_len < 20
+            else persistent_dynamic.get("text.question_too_long")
         )
         await update.message.reply_text(
             text=persistent_dynamic.get("text.questions_menu"),
@@ -194,7 +197,7 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         asked_date=update.message.date,
         answered_by=None,
         answered_date=None,
-        message=update.message.text,
+        message=update.message.text_markdown_v2,
     )
 
     await database.insert_question(question)

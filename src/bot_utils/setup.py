@@ -52,6 +52,18 @@ def generate_conversation_handler():
             types.AdminState.MAIN_MENU: [
                 CallbackQueryHandler(admin_menu.main_menu_callback)
             ],
+            types.AdminState.ANSWERING_QUESTIONS: [
+                CallbackQueryHandler(admin_menu.answering_menu_callback),
+                MessageHandler(
+                    filters=msg_filters.TEXT, callback=admin_menu.answering_menu_reply
+                ),
+            ],
+            types.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT: [
+                CallbackQueryHandler(admin_menu.redirect_to_department_callback)
+            ],
+            types.AdminState.CONFIRMING_QUESTION_DELETION: [
+                CallbackQueryHandler(admin_menu.confirm_question_deletion_callback)
+            ],
             types.AdminState.SETTINGS: [
                 CallbackQueryHandler(admin_menu.settings_callback)
             ],
@@ -218,6 +230,9 @@ def update_keyboards():
         ),
         types.Keyboards.MAINTAINER_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.maintainer_settings").values()
+        ),
+        types.Keyboards.CONFIRM: keyboards_gen.generate_inline_keyboard_with_return(
+            [persistent_dynamic.get("buttons.confirm")]
         ),
         types.Keyboards.GO_BACK: keyboards_gen.generate_inline_keyboard_with_return([]),
         "lists": {

@@ -1,6 +1,7 @@
 import html
 import traceback
 import json
+import jsonpickle
 from logging import Logger
 import functools
 from typing import Iterable
@@ -11,6 +12,9 @@ from telegram.ext import ContextTypes
 
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 from bot_utils import types, database
+
+jsonpickle.set_preferred_backend("json")
+jsonpickle.set_encoder_options("json", indent=2, ensure_ascii=False)
 
 
 # TODO: REVIEW
@@ -32,11 +36,7 @@ def split_message_into_valid_chunks(msg: str, max_chunk_length: int) -> Iterable
                 end = min(msg_len, begin + max_chunk_length)
             else:
                 split_pos = msg.rfind("\n", begin, end - 5)
-                new_chunk = msg[begin:split_pos] + "</pre>"
-                begin = split_pos
-                end = min(msg_len, begin + max_chunk_length)
-                msg = msg[:begin] + "<pre>" + msg[begin:]
-                msg_len = len(msg)
+                msg = msg[:split_pos] + "<\pre><pre>" + msg[split_pos:]
 
         else:
             # If this is not a pre block, consider a chunk if fits or skip
@@ -86,20 +86,20 @@ async def log_and_recover(
     logger.error(
         f"{type(error).__name__}({error})\n"
         "An exception was raised while handling an update\n"
-        f"update = {json.dumps(update_str, indent=2, ensure_ascii=False)}\n\n"
-        f"context.bot_data = {str(context.bot_data)}\n\n"
-        f"context.chat_data = {str(context.chat_data)}\n\n"
-        f"context.user_data = {str(context.user_data)}\n\n"
+        f"update = {jsonpickle.encode(update_str)}\n\n"
+        f"context.bot_data = {jsonpickle.encode(context.bot_data)}\n\n"
+        f"context.chat_data = {jsonpickle.encode(context.chat_data)}\n\n"
+        f"context.user_data = {jsonpickle.encode(context.user_data)}\n\n"
         f"{tb_string}"
     )
 
     message = (
         "An exception was raised while handling an update\n"
-        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
+        f"<pre>update = {html.escape(jsonpickle.encode(update_str))}"
         "</pre>\n\n"
-        f"<pre>context.bot_data = {html.escape(str(context.bot_data))}</pre>\n\n"
-        f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
-        f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
+        f"<pre>context.bot_data = {html.escape(jsonpickle.encode(context.bot_data))}</pre>\n\n"
+        f"<pre>context.chat_data = {html.escape(jsonpickle.encode(context.chat_data))}</pre>\n\n"
+        f"<pre>context.user_data = {html.escape(jsonpickle.encode(context.user_data))}</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"
     )
     split_message = split_message_into_valid_chunks(
@@ -124,7 +124,7 @@ async def log_and_recover(
     )
 
 
-def log_on_error_and_return(value, logger: Logger):
+def log_on_error_and_return(value, logger: Logger, cleanup_func=None):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -132,6 +132,8 @@ def log_on_error_and_return(value, logger: Logger):
                 return await func(update, context)
             except Exception as e:
                 await log_and_recover(logger, e, update, context)
+                if cleanup_func is not None:
+                    cleanup_func(context)
                 return value
 
         return wrapper

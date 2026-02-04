@@ -75,6 +75,7 @@ class QuestionState(Enum):
 class AdminState(Enum):
     LOGIN = auto()
     MAIN_MENU = auto()
+    ANSWERING_QUESTIONS = auto()
     SETTINGS = auto()
     SU_SETTINGS = auto()
     MAINTAINER_SETTINGS = auto()
@@ -83,7 +84,9 @@ class AdminState(Enum):
     ENTERING_DEPARTMENT_NAME = auto()
     SELECTING_DEPARTMENT = auto()
     SELECTING_DEPARTMENT_TO_DELETE = auto()
+    SELECTING_DEPARTMENT_TO_REDIRECT = auto()
     SELECTING_ADMIN_TO_DELETE = auto()
+    CONFIRMING_QUESTION_DELETION = auto()
 
 
 class AdminFlags(IntFlag):
@@ -103,6 +106,7 @@ class Keyboards(Enum):
     MAINTAINER_SETTINGS = auto()
     ADMIN_ANSWER_MENU = auto()
     GO_BACK = auto()
+    CONFIRM = auto()
 
 
 class BotMemory(IntEnum):
@@ -111,6 +115,9 @@ class BotMemory(IntEnum):
     VIEWED_MSG = auto()
     LOGGED_IN_AS = auto()
     STARTED_CHAT = auto()
+    ADMIN_REVIEWS_QUESTION = auto()
+    QUESTIONS_UNDER_REVIEW = auto()
+    QUESTIONS_TO_SKIP = auto()
 
 
 class PasswordFormat(IntEnum):

@@ -6,3 +6,6 @@ Standards:
 
 Known issues:
   - Deletion of admins with identical names is not handled properly and leads to neither admin getting deleted because the buttons are only differentiated by their names. This currently causes no problems because
+
+Buglist:
+  - Commands should be one of the certain ones to return to a safe state for the program. Currently, they can't be called from everywhere

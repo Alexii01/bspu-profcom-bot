@@ -1,7 +1,5 @@
 import logging
 import hashlib
-from multiprocessing import Value
-
 from telegram import Update
 
 # from telegram import constants as TelegramConstants
@@ -29,6 +27,7 @@ async def update_admin_status(context: ContextTypes.DEFAULT_TYPE):
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result
 
 
+# TODO: Use this function wherever it is appropriate
 async def fail_if_admin_no_longer_exists(context: ContextTypes.DEFAULT_TYPE):
     if not await database.admin_exists(
         context.chat_data[types.BotMemory.LOGGED_IN_AS].id
@@ -36,8 +35,13 @@ async def fail_if_admin_no_longer_exists(context: ContextTypes.DEFAULT_TYPE):
         admin_no_longer_exists_error()
 
 
+def cleanup_on_error(context: ContextTypes.DEFAULT_TYPE):
+    context.chat_data.pop(types.BotMemory.ADMIN_REVIEWS_QUESTION, None)
+    context.chat_data.pop(types.BotMemory.QUESTIONS_TO_SKIP, None)
+
+
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     result = await database.select_admin_with_user_id(update.effective_user.id)
@@ -54,7 +58,7 @@ async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     result = await database.authorise_new_admin(
@@ -75,8 +79,100 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return types.AdminState.MAIN_MENU
 
 
+async def output_question_to_answer_via_query(query, question):
+    await query.edit_message_text(
+        text=question.message
+        + "\n\n"
+        + persistent_dynamic.get("text.review_question_pls"),
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=runtime_dynamic.get("keyboards")[
+            types.Keyboards.ADMIN_ANSWER_MENU
+        ],
+    )
+
+
+async def output_question_to_answer_via_update(update: Update, question):
+    await update.message.reply_text(
+        text=question.message
+        + "\n\n"
+        + persistent_dynamic.get("text.review_question_pls"),
+        parse_mode=ParseMode.MARKDOWN_V2,
+        reply_markup=runtime_dynamic.get("keyboards")[
+            types.Keyboards.ADMIN_ANSWER_MENU
+        ],
+    )
+
+
+async def answer_another_question_via_query(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    query = update.callback_query
+
+    if types.BotMemory.ADMIN_SELECTED_DEPARTMENT not in context.chat_data:
+        await query.edit_message_text(
+            text=persistent_dynamic.get("text.admin_select_department_pls"),
+        )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=persistent_dynamic.get("text.successful_login"),
+            reply_markup=keyboards_gen.generate_admin_main_menu(
+                context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
+            ),
+        )
+        return types.AdminState.MAIN_MENU
+
+    if types.BotMemory.QUESTIONS_TO_SKIP not in context.chat_data:
+        question = await database.select_oldest_question_from_department(
+            context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][0]
+        )
+        if question is None:
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.no_questions_to_answer"),
+            )
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=persistent_dynamic.get("text.successful_login"),
+                reply_markup=keyboards_gen.generate_admin_main_menu(
+                    context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
+                ),
+            )
+            return types.AdminState.MAIN_MENU
+    else:
+        question = await database.select_oldest_question_from_department_but_not_ids(
+            context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][0],
+            context.chat_data[types.BotMemory.QUESTIONS_TO_SKIP],
+        )
+        if question is None:
+            context.chat_data.pop(types.BotMemory.QUESTIONS_TO_SKIP)
+            return await answer_another_question_via_query(update, context)
+
+    if (
+        types.BotMemory.ADMIN_REVIEWS_QUESTION in context.chat_data
+        and context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id == question.id
+    ):
+        return types.AdminState.ANSWERING_QUESTIONS
+
+    context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION] = question
+    context.bot_data.setdefault(types.BotMemory.QUESTIONS_UNDER_REVIEW, set())
+    context.bot_data[types.BotMemory.QUESTIONS_UNDER_REVIEW].add(question.id)
+
+    await output_question_to_answer_via_query(query, question)
+
+    return types.AdminState.ANSWERING_QUESTIONS
+
+
+async def reply_to_question(
+    context: ContextTypes.DEFAULT_TYPE, question: models.Question, text: str
+):
+    await context.bot.send_message(
+        chat_id=question.user_id,
+        text=f"Ответил(а): {context.chat_data[types.BotMemory.LOGGED_IN_AS].public_name} ({context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][1]})\n{text}",
+        parse_mode=ParseMode.HTML,
+    )
+
+
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
@@ -86,14 +182,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     match int(query.data):
         case button if button == 0:  # Answer questions
-            # TODO: WORKING HERE
-            await query.edit_message_text(
-                text=persistent_dynamic.get("text.successful_login"),
-                reply_markup=keyboards_gen.generate_admin_main_menu(
-                    context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
-                ),
-            )
-            return types.AdminState.MAIN_MENU
+            return await answer_another_question_via_query(update, context)
         case button if button == 1:  # Settings
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.admin_settings"),
@@ -121,20 +210,184 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return types.MainMenuState.ERROR_ENCOUNTERED
 
 
-async def start_answering_questions(
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
+)
+async def answering_menu_callback(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    pass
+    await update.callback_query.answer()
+    query = update.callback_query
 
+    await fail_if_admin_no_longer_exists(context)
 
-async def stop_answering_questions(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    pass
+    if int(query.data) == types.GO_BACK_CODE:
+        cleanup_on_error(context)
+        await query.edit_message_text(
+            text=persistent_dynamic.get("text.successful_login"),
+            reply_markup=keyboards_gen.generate_admin_main_menu(
+                context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
+            ),
+        )
+        return types.AdminState.MAIN_MENU
+
+    match runtime_dynamic.get("keyboards.lists")[types.Keyboards.ADMIN_ANSWER_MENU][
+        int(query.data)
+    ]:
+        case button if button == persistent_dynamic.get(
+            "buttons.admin_answer_menu.redirect"
+        ):
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.admin_select_department_to_redirect"),
+                reply_markup=runtime_dynamic.get("keyboards")[
+                    types.Keyboards.DEPARTMENTS
+                ],
+            )
+            return types.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT
+        case button if button == persistent_dynamic.get(
+            "buttons.admin_answer_menu.send_faq"
+        ):
+            await reply_to_question(
+                context,
+                context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION],
+                persistent_dynamic.get("text.default_reply_see_faq"),
+            )
+
+            await database.delete_question_by_id(
+                context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+            )
+
+            return await answer_another_question_via_query(update, context)
+
+        case button if button == persistent_dynamic.get(
+            "buttons.admin_answer_menu.discard"
+        ):
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.confirm_question_deletion"),
+                reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.CONFIRM],
+            )
+            return types.AdminState.CONFIRMING_QUESTION_DELETION
+        case button if button == persistent_dynamic.get(
+            "buttons.admin_answer_menu.skip"
+        ):
+            context.bot_data[types.BotMemory.QUESTIONS_UNDER_REVIEW].discard(
+                context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+            )
+            context.chat_data.setdefault(types.BotMemory.QUESTIONS_TO_SKIP, [])
+            context.chat_data[types.BotMemory.QUESTIONS_TO_SKIP].append(
+                context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+            )
+
+            return await answer_another_question_via_query(update, context)
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
+)
+async def confirm_question_deletion_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+    query = update.callback_query
+
+    await fail_if_admin_no_longer_exists(context)
+
+    if int(query.data) == types.GO_BACK_CODE:
+        await output_question_to_answer_via_query(
+            query, context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION]
+        )
+        return types.AdminState.ANSWERING_QUESTIONS
+    else:
+        await database.delete_question_by_id(
+            context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+        )
+        context.chat_data.pop(types.BotMemory.ADMIN_REVIEWS_QUESTION)
+        return await answer_another_question_via_query(update, context)
+
+
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
+)
+async def redirect_to_department_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await update.callback_query.answer()
+    query = update.callback_query
+
+    await fail_if_admin_no_longer_exists(context)
+
+    try:
+        int(query.data)
+        await output_question_to_answer_via_query(
+            query, context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION]
+        )
+        return types.AdminState.ANSWERING_QUESTIONS
+    except ValueError:
+        await database.update_question_department_with_id(
+            query.data, context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+        )
+
+        return await answer_another_question_via_query(update, context)
+
+
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
+)
+async def answering_menu_reply(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    await reply_to_question(
+        context,
+        context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION],
+        update.message.text_html,
+    )
+
+    await database.delete_question_by_id(
+        context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+    )
+
+    if types.BotMemory.QUESTIONS_TO_SKIP not in context.chat_data:
+        question = await database.select_oldest_question_from_department(
+            context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][0]
+        )
+        if question is None:
+            await query.edit_message_text(
+                text=persistent_dynamic.get("text.no_questions_to_answer"),
+            )
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=persistent_dynamic.get("text.successful_login"),
+                reply_markup=keyboards_gen.generate_admin_main_menu(
+                    context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
+                ),
+            )
+            return types.AdminState.MAIN_MENU
+    else:
+        question = await database.select_oldest_question_from_department_but_not_ids(
+            context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][0],
+            context.chat_data[types.BotMemory.QUESTIONS_TO_SKIP],
+        )
+        if question is None:
+            context.chat_data.pop(types.BotMemory.QUESTIONS_TO_SKIP)
+            return await answer_another_question_via_query(update, context)
+
+    if (
+        types.BotMemory.ADMIN_REVIEWS_QUESTION in context.chat_data
+        and context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id == question.id
+    ):
+        return types.AdminState.ANSWERING_QUESTIONS
+
+    context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION] = question
+    context.bot_data.setdefault(types.BotMemory.QUESTIONS_UNDER_REVIEW, set())
+    context.bot_data[types.BotMemory.QUESTIONS_UNDER_REVIEW].add(question.id)
+
+    await output_question_to_answer_via_query(query, question)
+
+    return types.AdminState.ANSWERING_QUESTIONS
+
+
+@error_handling.log_on_error_and_return(
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
@@ -208,7 +461,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def update_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await fail_if_admin_no_longer_exists(context)
@@ -223,7 +476,7 @@ async def update_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def select_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.answer()
@@ -231,7 +484,9 @@ async def select_department(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     await fail_if_admin_no_longer_exists(context)
 
-    if int(query.data) != types.GO_BACK_CODE:
+    try:
+        int(query.data)
+    except ValueError:
         context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT] = (
             query.data,
             persistent_dynamic.get(f"departments.{query.data}"),
@@ -245,7 +500,7 @@ async def select_department(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def su_settings_callback(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -347,7 +602,7 @@ async def su_settings_callback(
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def delete_admin_callback(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -375,7 +630,7 @@ async def delete_admin_callback(
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def new_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     dept_name = update.message.text
@@ -383,18 +638,14 @@ async def new_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     processed_dept_name = "".join(dept_name.casefold().split())
 
     dept_name_hash = hashlib.sha256(processed_dept_name.encode("utf-8")).hexdigest()
-    # TODO: Remove the debugging shiet and make smaller
-    await update.message.reply_text(
-        text=processed_dept_name
-        + "\n"
-        + dept_name_hash
-        + "\n"
-        + str(len(dept_name_hash.encode("utf-8"))),
-    )
 
     persistent_dynamic.get("departments").update({dept_name_hash: dept_name})
     persistent_dynamic.get("old_departments").pop(dept_name_hash, None)
     persistent_dynamic.dump(types.FileNames.DEFAULTS)
+
+    await update.message.reply_text(
+        text=persistent_dynamic.get("text.operation_success")
+    )
 
     await update.message.reply_text(
         text=persistent_dynamic.get("text.su_admin_settings"),
@@ -407,7 +658,7 @@ async def new_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def delete_department_callback(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -447,7 +698,7 @@ async def delete_department_callback(
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def maintainer_settings_callback(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -519,7 +770,7 @@ async def maintainer_settings_callback(
 
 
 @error_handling.log_on_error_and_return(
-    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
+    types.MainMenuState.ERROR_ENCOUNTERED, logger=logger, cleanup_func=cleanup_on_error
 )
 async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Returns user to main menu and sends an appropariate message"""

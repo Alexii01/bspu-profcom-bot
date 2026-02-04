@@ -68,13 +68,29 @@ __ADMIN_WITH_ID_EXISTS = f"""
     )
     """
 __SELECT_OLDEST_QUESTION = (
-    f"SELECT * FROM {types.DatabaseTables.QUESTIONS} LIMIT 1 ORDER BY asked_date"
+    f"SELECT * FROM {types.DatabaseTables.QUESTIONS} ORDER BY asked_date ASC LIMIT 1 "
 )
+__SELECT_OLDEST_QUESTION_FROM_DEPARTMENT = f"""
+    SELECT *
+    FROM {types.DatabaseTables.QUESTIONS}
+    WHERE department=?
+    ORDER BY asked_date
+    ASC LIMIT 1
+    """
+__SELECT_OLDEST_QUESTION_FROM_DEPARTMENT_BUT_NOT_IDS = """
+    SELECT *
+    FROM {}
+    WHERE department=?  AND id NOT IN ({})
+    ORDER BY asked_date
+    ASC LIMIT 1
+"""
 __SELECT_QUESTIONS_FROM_USER = (
     f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE user_id=?"
 )
 __SELECT_QUESTION_WITH_ID = f"SELECT * FROM {types.DatabaseTables.QUESTIONS} WHERE id=?"
-
+__UPDATE_QUESTION_DEPARTMENT_WITH_ID = (
+    f"UPDATE {types.DatabaseTables.QUESTIONS} SET department=? WHERE id=?"
+)
 __SELECT_USERS_WITH_QUESTIONS = (
     f"SELECT DISTINCT user_id FROM {types.DatabaseTables.QUESTIONS}"
 )
@@ -404,3 +420,42 @@ async def select_oldest_question(conn: aiosqlite.Connection):
     async with conn.execute(__SELECT_OLDEST_QUESTION) as cursor:
         cursor.row_factory = question_factory
         return await cursor.fetchone()
+
+
+@__with_connection
+async def select_oldest_question_from_department(
+    conn: aiosqlite.Connection, department: str
+):
+    async with conn.execute(
+        __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT,
+        (department,),
+    ) as cursor:
+        cursor.row_factory = question_factory
+        return await cursor.fetchone()
+
+
+@__with_connection
+async def select_oldest_question_from_department_but_not_ids(
+    conn: aiosqlite.Connection, department: str, ids: Iterable[str]
+):
+    async with conn.execute(
+        __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT_BUT_NOT_IDS.format(
+            types.DatabaseTables.QUESTIONS, ", ".join("?" for _ in ids)
+        ),
+        [department] + ids,
+    ) as cursor:
+        cursor.row_factory = question_factory
+        return await cursor.fetchone()
+
+
+@__with_connection
+async def update_question_department_with_id(
+    conn: aiosqlite.Connection, department: str, id: str
+):
+    await conn.execute(
+        __UPDATE_QUESTION_DEPARTMENT_WITH_ID,
+        (
+            department,
+            id,
+        ),
+    )
