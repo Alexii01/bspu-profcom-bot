@@ -181,9 +181,9 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await fail_if_admin_no_longer_exists(context)
 
     match int(query.data):
-        case button if button == 0:  # Answer questions
+        case 0:  # Answer questions
             return await answer_another_question_via_query(update, context)
-        case button if button == 1:  # Settings
+        case 1:  # Settings
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.admin_settings"),
                 reply_markup=runtime_dynamic.get("keyboards")[
@@ -191,7 +191,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 ],
             )
             return types.AdminState.SETTINGS
-        case button if button == 2:  # Superuser settings
+        case 2:  # Superuser settings
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.admin_settings"),
                 reply_markup=runtime_dynamic.get("keyboards")[
@@ -199,7 +199,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 ],
             )
             return types.AdminState.SU_SETTINGS
-        case button if button == 3:  # Maintainer settings
+        case 3:  # Maintainer settings
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.admin_settings"),
                 reply_markup=runtime_dynamic.get("keyboards")[
@@ -297,12 +297,12 @@ async def confirm_question_deletion_callback(
             query, context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION]
         )
         return types.AdminState.ANSWERING_QUESTIONS
-    else:
-        await database.delete_question_by_id(
-            context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
-        )
-        context.chat_data.pop(types.BotMemory.ADMIN_REVIEWS_QUESTION)
-        return await answer_another_question_via_query(update, context)
+
+    await database.delete_question_by_id(
+        context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+    )
+    context.chat_data.pop(types.BotMemory.ADMIN_REVIEWS_QUESTION)
+    return await answer_another_question_via_query(update, context)
 
 
 @error_handling.log_on_error_and_return(
@@ -342,46 +342,7 @@ async def answering_menu_reply(
         update.message.text_html,
     )
 
-    await database.delete_question_by_id(
-        context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
-    )
-
-    if types.BotMemory.QUESTIONS_TO_SKIP not in context.chat_data:
-        question = await database.select_oldest_question_from_department(
-            context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][0]
-        )
-        if question is None:
-            await query.edit_message_text(
-                text=persistent_dynamic.get("text.no_questions_to_answer"),
-            )
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=persistent_dynamic.get("text.successful_login"),
-                reply_markup=keyboards_gen.generate_admin_main_menu(
-                    context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
-                ),
-            )
-            return types.AdminState.MAIN_MENU
-    else:
-        question = await database.select_oldest_question_from_department_but_not_ids(
-            context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][0],
-            context.chat_data[types.BotMemory.QUESTIONS_TO_SKIP],
-        )
-        if question is None:
-            context.chat_data.pop(types.BotMemory.QUESTIONS_TO_SKIP)
-            return await answer_another_question_via_query(update, context)
-
-    if (
-        types.BotMemory.ADMIN_REVIEWS_QUESTION in context.chat_data
-        and context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id == question.id
-    ):
-        return types.AdminState.ANSWERING_QUESTIONS
-
-    context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION] = question
-    context.bot_data.setdefault(types.BotMemory.QUESTIONS_UNDER_REVIEW, set())
-    context.bot_data[types.BotMemory.QUESTIONS_UNDER_REVIEW].add(question.id)
-
-    await output_question_to_answer_via_query(query, question)
+    # TODO: Fix inability to edit previous messages
 
     return types.AdminState.ANSWERING_QUESTIONS
 
@@ -446,18 +407,15 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.admin_instructions"),
             )
-        case any:
-            raise NotImplementedError(
-                f"Most settings aren't ready yet (including {any})"
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=persistent_dynamic.get("text.admin_settings"),
+                reply_markup=runtime_dynamic.get("keyboards")[
+                    types.Keyboards.ADMIN_SETTINGS
+                ],
             )
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=persistent_dynamic.get("text.admin_settings"),
-        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.ADMIN_SETTINGS],
-    )
-
-    return types.AdminState.SETTINGS
+            return types.AdminState.SETTINGS
 
 
 @error_handling.log_on_error_and_return(

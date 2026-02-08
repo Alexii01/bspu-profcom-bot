@@ -11,7 +11,6 @@ class SharedDynamicDataClass:
     def __init__(self, name: str, new_data: Dict[Any, Any] | None = None):
         self.name = name
         self.data = new_data
-        self.cache = {}
 
     def load(self, filepath: str):
         with open(file=filepath, mode="r", encoding="utf-8") as data_file:
@@ -19,7 +18,6 @@ class SharedDynamicDataClass:
             data = json.load(data_file)
 
         self.data = data
-        self.cache = {}
 
     def dump(self, filepath: str):
         if self.data is None:
@@ -36,9 +34,6 @@ class SharedDynamicDataClass:
                 f"Attempt to read from empty SharedDynamicDataClass ({key})"
             )
 
-        if key in self.cache:
-            return self.cache[key]
-
         path = key.split(".")
         handle = self.data
 
@@ -48,9 +43,9 @@ class SharedDynamicDataClass:
             except KeyError:
                 raise KeyError(f"No key {step} from {key} in SharedDynamicDataClass")
 
-        self.cache[key] = handle
         return handle
 
 
+# TODO: Fix redeclaration issue
 persistent_dynamic = SharedDynamicDataClass("persistent_dynamic", {})
 runtime_dynamic = SharedDynamicDataClass("runtime_dynamic", {})

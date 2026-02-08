@@ -1,4 +1,6 @@
 import logging
+
+# TODO: Migrate to sqlalchemy
 import aiosqlite
 import asyncio
 import bcrypt
@@ -121,11 +123,11 @@ __UPDATE_ENABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID = f"""
 """
 
 
-def single_element_factory(conn: aiosqlite.Connection, element: tuple):
+def __single_element_factory(conn: aiosqlite.Connection, element: tuple):
     return element[0]
 
 
-def admin_factory(conn: aiosqlite.Connection, admin: tuple):
+def __admin_factory(conn: aiosqlite.Connection, admin: tuple):
     return models.Admin(
         id=admin[0],
         public_name=admin[1],
@@ -135,7 +137,7 @@ def admin_factory(conn: aiosqlite.Connection, admin: tuple):
     )
 
 
-def question_factory(conn: aiosqlite.Connection, question: tuple):
+def __question_factory(conn: aiosqlite.Connection, question: tuple):
     return models.Question(
         id=question[0],
         user_id=question[1],
@@ -221,20 +223,22 @@ async def __super_maintainer_exists(conn: aiosqlite.Connection):
 
 
 async def __create_super_maintainer_if_not_present(conn: aiosqlite.Connection):
-    if not await __super_maintainer_exists(conn):
-        # Create super admin
-        password = models.AdminFactory.generate_admin_password()
-        su = models.AdminFactory.new_admin(
-            "su", password, types.AdminFlags.IS_SUPER | types.AdminFlags.IS_MAINTAINER
-        )
-        # Save the password for future reference
-        with open(types.FileNames.FIRST_SU_PASSWORD, mode="w") as file:
-            file.write(password)
-        del password
-        # Add to db
-        await insert_admin_with_existing_connection(conn, su)
-        del su
-        logger.info("Superuser admin created!")
+    if await __super_maintainer_exists(conn):
+        return
+
+    # Create super admin
+    password = models.AdminFactory.generate_admin_password()
+    su = models.AdminFactory.new_admin(
+        "su", password, types.AdminFlags.IS_SUPER | types.AdminFlags.IS_MAINTAINER
+    )
+    # Save the password for future reference
+    with open(types.FileNames.FIRST_SU_PASSWORD, mode="w") as file:
+        file.write(password)
+    del password
+    # Add to db
+    await insert_admin_with_existing_connection(conn, su)
+    del su
+    logger.info("Superuser admin created!")
 
 
 @decorators.define_log(
@@ -257,14 +261,14 @@ def setup_sqlite_db():
 async def select_questions_from_user(
     conn: aiosqlite.Connection, user_id: int
 ) -> Iterable[models.Question]:
-    conn.row_factory = question_factory
+    conn.row_factory = __question_factory
     async with conn.execute(__SELECT_QUESTIONS_FROM_USER, (user_id,)) as cursor:
         return await cursor.fetchall()
 
 
 @__with_connection
 async def select_question_by_id(conn: aiosqlite.Connection, id: str) -> models.Question:
-    conn.row_factory = question_factory
+    conn.row_factory = __question_factory
     async with conn.execute(__SELECT_QUESTION_WITH_ID, (id,)) as cursor:
         return await cursor.fetchone()
 
@@ -277,13 +281,13 @@ async def delete_question_by_id(conn: aiosqlite.Connection, id: str):
 @__with_connection
 async def select_users_with_questions(conn: aiosqlite.Connection):
     async with conn.execute(__SELECT_USERS_WITH_QUESTIONS) as cursor:
-        cursor.row_factory = single_element_factory
+        cursor.row_factory = __single_element_factory
         return await cursor.fetchall()
 
 
 @__with_connection
 async def select_admin_with_id(conn: aiosqlite.Connection, id: str) -> models.Admin:
-    conn.row_factory = admin_factory
+    conn.row_factory = __admin_factory
     async with conn.execute(__SELECT_ADMIN_WITH_ID, (id,)) as cursor:
         result = await cursor.fetchone()
         return result
@@ -293,7 +297,7 @@ async def select_admin_with_id(conn: aiosqlite.Connection, id: str) -> models.Ad
 async def select_admin_with_user_id(
     conn: aiosqlite.Connection, user_id: int
 ) -> models.Admin:
-    conn.row_factory = admin_factory
+    conn.row_factory = __admin_factory
     async with conn.execute(__SELECT_ADMIN_WITH_USER_ID, (user_id,)) as cursor:
         return await cursor.fetchone()
 
@@ -302,7 +306,7 @@ async def select_admin_with_user_id(
 async def authorise_new_admin(
     conn: aiosqlite.Connection, user_id: int, password: str
 ) -> models.Admin:
-    conn.row_factory = admin_factory
+    conn.row_factory = __admin_factory
     async with conn.execute(__SELECT_ADMINS_WITHOUT_ASSOCIATED_USER) as cursor:
         async for row in cursor:
             if bcrypt.checkpw(password.encode("ascii"), row.password_hash):
@@ -355,14 +359,14 @@ async def update_admin_name(conn: aiosqlite.Connection, name: str, id: str):
 @__with_connection
 async def select_all_admin_names(conn: aiosqlite.Connection):
     async with conn.execute(__SELECT_ALL_ADMIN_NAMES) as cursor:
-        cursor.row_factory = single_element_factory
+        cursor.row_factory = __single_element_factory
         return await cursor.fetchall()
 
 
 @__with_connection
 async def select_all_admins(conn: aiosqlite.Connection) -> Iterable[models.Admin]:
     async with conn.execute(__SELECT_ALL_ADMINS) as cursor:
-        cursor.row_factory = admin_factory
+        cursor.row_factory = __admin_factory
         return await cursor.fetchall()
 
 
@@ -385,7 +389,7 @@ async def select_admins_without_flags(
             flags,
         ),
     ) as cursor:
-        cursor.row_factory = admin_factory
+        cursor.row_factory = __admin_factory
         return await cursor.fetchall()
 
 
@@ -398,7 +402,7 @@ async def select_lowest_level_admins():
 @__with_connection
 async def select_maintainers_ids(conn: aiosqlite.Connection):
     async with conn.execute(__SELECT_MAINTAINERS_USER_IDS) as cursor:
-        cursor.row_factory = single_element_factory
+        cursor.row_factory = __single_element_factory
         return await cursor.fetchall()
 
 
@@ -418,7 +422,7 @@ async def update_error_listening_status(
 @__with_connection
 async def select_oldest_question(conn: aiosqlite.Connection):
     async with conn.execute(__SELECT_OLDEST_QUESTION) as cursor:
-        cursor.row_factory = question_factory
+        cursor.row_factory = __question_factory
         return await cursor.fetchone()
 
 
@@ -430,7 +434,7 @@ async def select_oldest_question_from_department(
         __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT,
         (department,),
     ) as cursor:
-        cursor.row_factory = question_factory
+        cursor.row_factory = __question_factory
         return await cursor.fetchone()
 
 
@@ -444,7 +448,7 @@ async def select_oldest_question_from_department_but_not_ids(
         ),
         [department] + ids,
     ) as cursor:
-        cursor.row_factory = question_factory
+        cursor.row_factory = __question_factory
         return await cursor.fetchone()
 
 

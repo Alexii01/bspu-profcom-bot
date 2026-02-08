@@ -53,9 +53,16 @@ from enum import Enum, IntEnum, StrEnum, IntFlag, auto
 # - Динамическая система отделов
 # - Ответы на вопросы пора прикрутить
 # - Изменения текста в боте
-# -
-#
 
+# - Make database interactions CRUD
+#   - Create python objets with CRUD functions that link to database
+# - Split handler functions by logic
+# - Take a look at functools partial to simplify decorators
+# - Study SOLID principles and apply, orthogonality
+# - Optimise use of functions
+# - Take inspiration from Web Design
+# - Pragmatic Programmer?
+# - Learn Swift UI as practice of similar patterns
 GO_BACK_CODE = -1
 
 

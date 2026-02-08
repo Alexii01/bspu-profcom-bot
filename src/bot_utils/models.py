@@ -30,9 +30,12 @@ class Admin:
 
 
 class AdminFactory:
+    @staticmethod
     def generate_sequence(alphabet: str, length: int) -> str:
         return "".join([secrets.choice(alphabet) for _ in range(length)])
 
+    # TODO: Merge with generate_admin_password
+    @staticmethod
     def generate_alphanumeric_password(parts: int, part_length: int) -> str:
         alphabet = string.ascii_letters + string.digits
         output = ""
@@ -43,11 +46,13 @@ class AdminFactory:
 
         return output
 
+    @staticmethod
     def generate_admin_password() -> str:
         return AdminFactory.generate_alphanumeric_password(
             types.PasswordFormat.PARTS, types.PasswordFormat.PART_LENGTH
         )
 
+    @staticmethod
     async def new_admin(
         name: str, password: str, flags: types.AdminFlags | None = None
     ) -> Admin:
@@ -61,11 +66,12 @@ class AdminFactory:
             flags=flags if flags else 0,
         )
 
+    @staticmethod
     async def new_blank_admin(
         name_template: str, password: str, flags: types.AdminFlags | None = None
     ):
         return await AdminFactory.new_admin(
-            name_template + AdminFactory.generate_sequence(string.digits, 5),
+            name_template + AdminFactory.generate_sequence(string.digits, 6),
             password,
             flags,
         )
