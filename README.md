@@ -9,3 +9,11 @@ Known issues:
 
 Buglist:
   - Commands should be one of the certain ones to return to a safe state for the program. Currently, they can't be called from everywhere
+
+CHANGES TO MAKE:
+  - Add a SessionManagerBase as an abstract class to simplify user interactions
+    - Make children AdminSessionManager and SessionManager
+  - Remove AdminFactory, replace with Password class
+    - Password extends RandomSequenceGenerator class
+  - Remove Admin, replace with DBSyncedAdmin using CRUD principles
+    - Same for questions

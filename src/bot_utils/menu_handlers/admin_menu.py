@@ -342,9 +342,14 @@ async def answering_menu_reply(
         update.message.text_html,
     )
 
-    # TODO: Fix inability to edit previous messages
+    await update.message.reply_text(
+        text=persistent_dynamic.get("text.successful_login"),
+        reply_markup=keyboards_gen.generate_admin_main_menu(
+            context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
+        ),
+    )
 
-    return types.AdminState.ANSWERING_QUESTIONS
+    return types.AdminState.MAIN_MENU
 
 
 @error_handling.log_on_error_and_return(

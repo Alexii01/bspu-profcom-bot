@@ -1,7 +1,7 @@
 from telegram import Update
 from typing import Final
-import logging
 import logging.handlers
+import logging
 
 
 from telegram.ext import (
@@ -13,7 +13,6 @@ from bot_utils import (
     setup,
     types,
 )
-
 
 # Logging config
 file_handler = logging.handlers.RotatingFileHandler(

@@ -6,6 +6,7 @@ from telegram import (
     InlineKeyboardMarkup,
 )
 from telegram import Update
+import telegram
 
 from bot_utils import types, models, database
 from bot_utils.dynamic_data import persistent_dynamic
@@ -84,7 +85,11 @@ async def generate_users_message_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=" ".join(question.message.split()[:5]),
+                    text=" ".join(question.message.split()[:5])
+                    .encode("utf-8")[
+                        : telegram.constants.InlineKeyboardButtonLimit.MAX_COPY_TEXT
+                    ]
+                    .decode("utf-8", "ignore"),
                     callback_data=str(question.id),
                 )
             ]
