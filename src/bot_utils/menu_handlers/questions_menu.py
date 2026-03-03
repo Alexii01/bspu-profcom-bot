@@ -2,13 +2,13 @@ import logging
 from uuid import uuid4
 
 from telegram import Update
-from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 from bot_utils.models import Question
-from bot_utils import types, database, keyboards_gen
+from bot_utils import types, database, keyboards
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 from bot_utils.menu_handlers import error_handling
+from bot_utils.custom_context import CustomContext
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +16,11 @@ logger = logging.getLogger(__name__)
 @error_handling.log_on_error_and_return(
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
-async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def main(update: Update, context: CustomContext) -> int:
     """Gives user access to menus within"""
-    del context
 
     logging.debug("%d: Question menu", update.effective_user.id)
-    await update.message.reply_text(
+    await context.new_msg(
         text=persistent_dynamic.get("text.questions_menu"),
         reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.QUESTION_MENU],
     )
@@ -31,7 +30,7 @@ async def main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 @error_handling.log_on_error_and_return(
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
-async def main_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def main_callback(update: Update, context: CustomContext) -> int:
     """Processes queries received from the question menu"""
     query = update.callback_query
     await query.answer()
@@ -66,9 +65,7 @@ async def main_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         ):
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.view_user_questions"),
-                reply_markup=await keyboards_gen.generate_users_message_keyboard(
-                    update
-                ),
+                reply_markup=await keyboards.generate_users_message_keyboard(update),
             )
             return types.QuestionState.QUESTION_VIEW_MENU
 
@@ -76,9 +73,7 @@ async def main_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 @error_handling.log_on_error_and_return(
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
-async def department_selected(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def department_selected(update: Update, context: CustomContext) -> int:
     """Processes queries received from the experts menu"""
     query = update.callback_query
     await query.answer()
@@ -104,7 +99,7 @@ async def department_selected(
 @error_handling.log_on_error_and_return(
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
-async def view_msg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def view_msg_callback(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     context.chat_data[types.BotMemory.VIEWED_MSG] = update.callback_query.data
 
@@ -132,9 +127,7 @@ async def view_msg_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 @error_handling.log_on_error_and_return(
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
-async def questions_list_callback(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def questions_list_callback(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     query = update.callback_query
 
@@ -171,7 +164,7 @@ async def questions_list_callback(
 @error_handling.log_on_error_and_return(
     types.MainMenuState.ERROR_ENCOUNTERED, logger=logger
 )
-async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def question(update: Update, context: CustomContext) -> int:
     """Parses and saves user's question, sending them back to question menu"""
     department_id = context.chat_data[types.BotMemory.SELECTED_DEPARTMENT]
     del context.chat_data[types.BotMemory.SELECTED_DEPARTMENT]
@@ -211,9 +204,7 @@ async def question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return types.QuestionState.MAIN_MENU
 
 
-async def return_to_main_menu(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
+async def return_to_main_menu(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text=persistent_dynamic.get("text.sorry_error")
@@ -226,7 +217,7 @@ async def return_to_main_menu(
     return types.QuestionState.MAIN_MENU
 
 
-async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def fallback(update: Update, context: CustomContext) -> int:
     """Returns user to questions menu and sends an appropariate message"""
     del context
 

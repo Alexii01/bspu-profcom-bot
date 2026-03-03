@@ -8,10 +8,9 @@ from typing import Iterable
 
 from telegram.constants import ParseMode, MessageLimit
 from telegram import Update
-from telegram.ext import ContextTypes
 
-from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 from bot_utils import types, database
+from bot_utils.custom_context import CustomContext
 
 jsonpickle.set_preferred_backend("json")
 jsonpickle.set_encoder_options("json", indent=2, ensure_ascii=False)
@@ -74,7 +73,7 @@ async def log_and_recover(
     logger: Logger,
     error: Exception,
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
+    context: CustomContext,
 ):
     # Three functions: log to logger, send message to maintainer, tell user of an error and return them to a safe state
 
@@ -95,8 +94,7 @@ async def log_and_recover(
 
     message = (
         "An exception was raised while handling an update\n"
-        f"<pre>update = {html.escape(jsonpickle.encode(update_str))}"
-        "</pre>\n\n"
+        f"<pre>update = {html.escape(jsonpickle.encode(update_str))}</pre>\n\n"
         f"<pre>context.bot_data = {html.escape(jsonpickle.encode(context.bot_data))}</pre>\n\n"
         f"<pre>context.chat_data = {html.escape(jsonpickle.encode(context.chat_data))}</pre>\n\n"
         f"<pre>context.user_data = {html.escape(jsonpickle.encode(context.user_data))}</pre>\n\n"
@@ -108,30 +106,28 @@ async def log_and_recover(
 
     # Sending data to dev
     devs = await database.select_maintainers_ids()
-    for chat in devs:
+    for dev in devs:
         for chunk in split_message:
             await context.bot.send_message(
-                chat_id=chat,
-                text=chunk,
-                parse_mode=ParseMode.HTML,
+                chat_id=dev, text=chunk, parse_mode=ParseMode.HTML
             )
 
     # Graceful error handling from the user's perspective
-    await context.bot.send_message(
-        chat_id=update.effective_user.id,
-        text=persistent_dynamic.get("text.sorry_error"),
-        reply_markup=runtime_dynamic.get("keyboards")[types.Keyboards.GO_BACK],
+    await context.new_msg(
+        lookup="text.sorry_error",
+        keyboard=types.Keyboards.GO_BACK,
     )
 
 
 def log_on_error_and_return(value, logger: Logger, cleanup_func=None):
     def decorator(func):
         @functools.wraps(func)
-        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def wrapper(update: Update, context: CustomContext):
             try:
                 return await func(update, context)
             except Exception as e:
                 await log_and_recover(logger, e, update, context)
+                context.clear_keyboard()
                 if cleanup_func is not None:
                     cleanup_func(context)
                 return value

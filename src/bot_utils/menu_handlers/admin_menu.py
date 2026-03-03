@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
-from bot_utils import types, database, keyboards_gen, models
+from bot_utils import types, database, models, keyboards
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 from bot_utils.menu_handlers import error_handling
 
@@ -49,7 +49,7 @@ async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result
         await update.message.reply_text(
             text=persistent_dynamic.get("text.successful_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(result.flags),
+            reply_markup=keyboards.generate_admin_main_menu(result.flags),
         )
         return types.AdminState.MAIN_MENU
 
@@ -74,7 +74,7 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         context.chat_data[types.BotMemory.LOGGED_IN_AS] = result
         await update.message.reply_text(
             text=persistent_dynamic.get("text.first_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(result.flags),
+            reply_markup=keyboards.generate_admin_main_menu(result.flags),
         )
         return types.AdminState.MAIN_MENU
 
@@ -115,7 +115,7 @@ async def answer_another_question_via_query(
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=persistent_dynamic.get("text.successful_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(
+            reply_markup=keyboards.generate_admin_main_menu(
                 context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
             ),
         )
@@ -132,7 +132,7 @@ async def answer_another_question_via_query(
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=persistent_dynamic.get("text.successful_login"),
-                reply_markup=keyboards_gen.generate_admin_main_menu(
+                reply_markup=keyboards.generate_admin_main_menu(
                     context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
                 ),
             )
@@ -166,7 +166,7 @@ async def reply_to_question(
 ):
     await context.bot.send_message(
         chat_id=question.user_id,
-        text=f"Ответил(а): {context.chat_data[types.BotMemory.LOGGED_IN_AS].public_name} ({context.chat_data[types.BotMemory.ADMIN_SELECTED_DEPARTMENT][1]})\n{text}",
+        text=f"Ответил(а): {context.chat_data[types.BotMemory.LOGGED_IN_AS].public_name}\n{text}",
         parse_mode=ParseMode.HTML,
     )
 
@@ -225,7 +225,7 @@ async def answering_menu_callback(
         cleanup_on_error(context)
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(
+            reply_markup=keyboards.generate_admin_main_menu(
                 context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
             ),
         )
@@ -301,6 +301,13 @@ async def confirm_question_deletion_callback(
     await database.delete_question_by_id(
         context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
     )
+
+    await reply_to_question(
+        context,
+        context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION],
+        "Учите русский",
+    )
+
     context.chat_data.pop(types.BotMemory.ADMIN_REVIEWS_QUESTION)
     return await answer_another_question_via_query(update, context)
 
@@ -342,9 +349,14 @@ async def answering_menu_reply(
         update.message.text_html,
     )
 
+    await database.delete_question_by_id(
+        context.chat_data[types.BotMemory.ADMIN_REVIEWS_QUESTION].id
+    )
+    context.chat_data.pop(types.BotMemory.ADMIN_REVIEWS_QUESTION)
+
     await update.message.reply_text(
         text=persistent_dynamic.get("text.successful_login"),
-        reply_markup=keyboards_gen.generate_admin_main_menu(
+        reply_markup=keyboards.generate_admin_main_menu(
             context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
         ),
     )
@@ -364,7 +376,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if int(query.data) == types.GO_BACK_CODE:
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(
+            reply_markup=keyboards.generate_admin_main_menu(
                 context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
             ),
         )
@@ -476,7 +488,7 @@ async def su_settings_callback(
     if int(query.data) == types.GO_BACK_CODE:
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(
+            reply_markup=keyboards.generate_admin_main_menu(
                 context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
             ),
         )
@@ -519,7 +531,7 @@ async def su_settings_callback(
         ):
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.select_admin_to_delete"),
-                reply_markup=keyboards_gen.generate_inline_keyboard_with_custom_callback_data_and_return(
+                reply_markup=keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
                     {
                         '"' + admin.public_name + '"': admin.id
                         for admin in await database.select_lowest_level_admins()
@@ -540,7 +552,7 @@ async def su_settings_callback(
         ):
             await query.edit_message_text(
                 text=persistent_dynamic.get("text.select_admin_to_delete"),
-                reply_markup=keyboards_gen.generate_inline_keyboard_with_custom_callback_data_and_return(
+                reply_markup=keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
                     {
                         '"' + name + '"': key
                         for key, name in persistent_dynamic.get("departments").items()
@@ -674,7 +686,7 @@ async def maintainer_settings_callback(
     if int(query.data) == types.GO_BACK_CODE:
         await query.edit_message_text(
             text=persistent_dynamic.get("text.successful_login"),
-            reply_markup=keyboards_gen.generate_admin_main_menu(
+            reply_markup=keyboards.generate_admin_main_menu(
                 context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
             ),
         )
@@ -742,7 +754,7 @@ async def fallback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logging.debug("%d: Admin menu fallback", update.effective_user.id)
     await update.message.reply_text(
         text=persistent_dynamic.get("text.successful_login"),
-        reply_markup=keyboards_gen.generate_admin_main_menu(
+        reply_markup=keyboards.generate_admin_main_menu(
             context.chat_data[types.BotMemory.LOGGED_IN_AS].flags
         ),
     )

@@ -8,20 +8,30 @@ logger = logging.getLogger(__name__)
 
 
 class SharedDynamicDataClass:
-    def __init__(self, name: str, new_data: Dict[Any, Any] | None = None):
+    def __init__(self, name: str, file: str = None, new_data: Dict[Any, Any] = {}):
         self.name = name
+        self.associated_file = file
         self.data = new_data
 
-    def load(self, filepath: str):
+        if self.associated_file:
+            self.load()
+
+    def load(self, filepath: str = None):
+        if not filepath:
+            filepath = self.associated_file
+
         with open(file=filepath, mode="r", encoding="utf-8") as data_file:
             logger.info(f"{self.name} load from {filepath}")
             data = json.load(data_file)
 
         self.data = data
 
-    def dump(self, filepath: str):
+    def dump(self, filepath: str = None):
         if self.data is None:
             return
+
+        if not filepath:
+            filepath = self.associated_file
 
         with open(file=filepath, mode="w", encoding="utf-8") as data_file:
             logger.info(f"{self.name} dump to {filepath}")
@@ -46,6 +56,5 @@ class SharedDynamicDataClass:
         return handle
 
 
-# TODO: Fix redeclaration issue
 persistent_dynamic = SharedDynamicDataClass("persistent_dynamic", {})
 runtime_dynamic = SharedDynamicDataClass("runtime_dynamic", {})

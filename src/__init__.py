@@ -6,13 +6,13 @@ import logging
 
 from telegram.ext import (
     Application,
+    ContextTypes,
     PicklePersistence,
 )
 
-from bot_utils import (
-    setup,
-    types,
-)
+from bot_utils import setup, types, custom_context
+from bot_utils.database import setup_sqlite_db
+from bot_utils.dynamic_data import persistent_dynamic
 
 # Logging config
 file_handler = logging.handlers.RotatingFileHandler(
@@ -59,8 +59,23 @@ if __name__ == "__main__":
 
     setup.dynamic_data_setup()
 
-    persistence = PicklePersistence(filepath=types.FileNames.PERSISTENCE)
-    app = Application.builder().token(TOKEN).persistence(persistence).build()
+    smart_context = ContextTypes(
+        context=custom_context.CustomContext,
+        bot_data=custom_context.BotContext,
+        chat_data=custom_context.ChatContext,
+        user_data=dict,
+    )
+
+    persistence = PicklePersistence(
+        filepath=types.FileNames.PERSISTENCE, context_types=smart_context
+    )
+    app = (
+        Application.builder()
+        .token(TOKEN)
+        .context_types(smart_context)
+        .persistence(persistence)
+        .build()
+    )
 
     app.add_handler(setup.generate_conversation_handler())
     # Not adding default error handler because no error handling is needed

@@ -1,4 +1,5 @@
-from typing import Iterable, Dict
+from typing import Final, Iterable, Dict
+from enum import Enum
 
 from telegram import (
     ReplyKeyboardMarkup,
@@ -10,6 +11,59 @@ import telegram
 
 from bot_utils import types, models, database
 from bot_utils.dynamic_data import persistent_dynamic
+
+
+class KeyboardDefinitions(Enum):
+    main_menu: Final = [
+        "buttons.main_menu.faq",
+        "buttons.main_menu.events",
+        "buttons.main_menu.socials",
+        "buttons.main_menu.question",
+    ]
+    questions_menu: Final = [
+        "buttons.questions_menu.ask_question",
+        "buttons.questions_menu.see_questions",
+    ]
+    view_question_menu: Final = ["buttons.view_question_menu.delete"]
+    admin_menu: Final = [
+        "buttons.admin_menu.answer_questions",
+        "buttons.admin_menu.settings",
+    ]
+    optional_settings: Final = [
+        "buttons.optional_settings.su",
+        "buttons.optional_settings.maintainer",
+    ]
+    admin_answer_menu: Final = [
+        "buttons.admin_answer_menu.redirect",
+        "buttons.admin_answer_menu.send_faq",
+        "buttons.admin_answer_menu.discard",
+        "buttons.admin_answer_menu.skip",
+    ]
+    admin_settings: Final = [
+        "buttons.admin_settings.select_name",
+        "buttons.admin_settings.select_department",
+        "buttons.admin_settings.help",
+        "buttons.admin_settings.logout",
+    ]
+    su_admin_settings: Final = [
+        "buttons.su_admin_settings.vie_statistics",
+        "buttons.su_admin_settings.global_message_for_all",
+        "buttons.su_admin_settings.global_message_for_waiting",
+        "buttons.su_admin_settings.edit_text",
+        "buttons.su_admin_settings.see_admin_names",
+        "buttons.su_admin_settings.create_admin",
+        "buttons.su_admin_settings.delete_admins",
+        "buttons.su_admin_settings.add_department",
+        "buttons.su_admin_settings.remove_department",
+    ]
+    maintainer_settings: Final = [
+        "buttons.maintainer_settings.global_message_for_admins",
+        "buttons.maintainer_settings.global_message_for_su_admins",
+        "buttons.maintainer_settings.create_su_admin",
+        "buttons.maintainer_settings.backup_db",
+        "buttons.maintainer_settings.backup_logs",
+        "buttons.maintainer_settings.listen_to_errors",
+    ]
 
 
 def generate_reply_keyboard(keyboard_options: Iterable[str]):

@@ -12,7 +12,6 @@ from telegram.ext import (
 from telegram.ext import filters as msg_filters
 
 from bot_utils import (
-    keyboards_gen,
     types,
     database,
     decorators,
@@ -25,6 +24,7 @@ from bot_utils.menu_handlers import (
 )
 
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
+from src.bot_utils import keyboards
 
 
 logger = logging.getLogger(__name__)
@@ -207,34 +207,34 @@ def generate_conversation_handler():
 )
 def update_keyboards():
     runtime_dynamic.data["keyboards"] = {
-        types.Keyboards.MAIN_MENU: keyboards_gen.generate_reply_keyboard(
+        types.Keyboards.MAIN_MENU: keyboards.generate_reply_keyboard(
             persistent_dynamic.get("buttons.main_menu").values()
         ),
-        types.Keyboards.QUESTION_MENU: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.QUESTION_MENU: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.questions_menu").values()
         ),
-        types.Keyboards.DEPARTMENTS: keyboards_gen.generate_inline_keyboard_with_custom_callback_data_and_return(
+        types.Keyboards.DEPARTMENTS: keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
             {value: key for key, value in persistent_dynamic.get("departments").items()}
         ),
-        types.Keyboards.VIEW_MESSAGE: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.VIEW_MESSAGE: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.view_question_menu").values()
         ),
-        types.Keyboards.ADMIN_ANSWER_MENU: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.ADMIN_ANSWER_MENU: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.admin_answer_menu").values()
         ),
-        types.Keyboards.ADMIN_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.ADMIN_SETTINGS: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.admin_settings").values()
         ),
-        types.Keyboards.SU_ADMIN_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.SU_ADMIN_SETTINGS: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.su_admin_settings").values()
         ),
-        types.Keyboards.MAINTAINER_SETTINGS: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.MAINTAINER_SETTINGS: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.maintainer_settings").values()
         ),
-        types.Keyboards.CONFIRM: keyboards_gen.generate_inline_keyboard_with_return(
+        types.Keyboards.CONFIRM: keyboards.generate_inline_keyboard_with_return(
             [persistent_dynamic.get("buttons.confirm")]
         ),
-        types.Keyboards.GO_BACK: keyboards_gen.generate_inline_keyboard_with_return([]),
+        types.Keyboards.GO_BACK: keyboards.generate_inline_keyboard_with_return([]),
         "lists": {
             types.Keyboards.QUESTION_MENU: list(
                 persistent_dynamic.get("buttons.questions_menu").values()

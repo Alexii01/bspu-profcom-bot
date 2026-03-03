@@ -286,7 +286,9 @@ async def select_users_with_questions(conn: aiosqlite.Connection):
 
 
 @__with_connection
-async def select_admin_with_id(conn: aiosqlite.Connection, id: str) -> models.Admin:
+async def select_admin_with_id(
+    conn: aiosqlite.Connection, id: str
+) -> models.Admin | None:
     conn.row_factory = __admin_factory
     async with conn.execute(__SELECT_ADMIN_WITH_ID, (id,)) as cursor:
         result = await cursor.fetchone()
@@ -304,21 +306,25 @@ async def select_admin_with_user_id(
 
 @__with_connection
 async def authorise_new_admin(
-    conn: aiosqlite.Connection, user_id: int, password: str
+    conn: aiosqlite.Connection, user_id: int, password: bytes
 ) -> models.Admin:
     conn.row_factory = __admin_factory
     async with conn.execute(__SELECT_ADMINS_WITHOUT_ASSOCIATED_USER) as cursor:
         async for row in cursor:
-            if bcrypt.checkpw(password.encode("ascii"), row.password_hash):
-                await conn.execute(
-                    __UPDATE_ADMIN_USER_ID_WITH_ID,
-                    (
-                        user_id,
-                        row.id,
-                    ),
-                )
+            if bcrypt.checkpw(password, row.password_hash):
                 return row
     return None
+
+
+@__with_connection
+async def update_admin_user_id(conn: aiosqlite.Connection, user_id: int, id: int):
+    await conn.execute(
+        __UPDATE_ADMIN_USER_ID_WITH_ID,
+        (
+            user_id,
+            id,
+        ),
+    )
 
 
 @__with_connection

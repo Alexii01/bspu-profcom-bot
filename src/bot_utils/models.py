@@ -75,3 +75,26 @@ class AdminFactory:
             password,
             flags,
         )
+
+
+class SeqGenerator:
+    @staticmethod
+    def generate_sequence(alphabet: str, length: int) -> str:
+        return "".join([secrets.choice(alphabet) for _ in range(length)])
+
+    @staticmethod
+    def generate_alphanumeric_password(parts: int, part_length: int) -> str:
+        alphabet = string.ascii_letters + string.digits
+        output = ""
+        for i in range(parts):
+            output += SeqGenerator.generate_sequence(alphabet, part_length)
+            if i != parts - 1:
+                output += "-"
+
+        return output
+
+    @staticmethod
+    def generate_admin_password() -> str:
+        return AdminFactory.generate_alphanumeric_password(
+            types.PasswordFormat.PARTS, types.PasswordFormat.PART_LENGTH
+        )
