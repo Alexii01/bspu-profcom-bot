@@ -1,5 +1,5 @@
-from typing import Final, Iterable, Dict
-from enum import Enum
+from dataclasses import dataclass
+from typing import Iterable, List, Sequence
 
 from telegram import (
     ReplyKeyboardMarkup,
@@ -9,126 +9,71 @@ from telegram import (
 from telegram import Update
 import telegram
 
-from bot_utils import types, models, database
+from bot_utils import models, database, __types
 from bot_utils.dynamic_data import persistent_dynamic
 
 
-class KeyboardDefinitions(Enum):
-    main_menu: Final = [
-        "buttons.main_menu.faq",
-        "buttons.main_menu.events",
-        "buttons.main_menu.socials",
-        "buttons.main_menu.question",
-    ]
-    questions_menu: Final = [
-        "buttons.questions_menu.ask_question",
-        "buttons.questions_menu.see_questions",
-    ]
-    view_question_menu: Final = ["buttons.view_question_menu.delete"]
-    admin_menu: Final = [
-        "buttons.admin_menu.answer_questions",
-        "buttons.admin_menu.settings",
-    ]
-    optional_settings: Final = [
-        "buttons.optional_settings.su",
-        "buttons.optional_settings.maintainer",
-    ]
-    admin_answer_menu: Final = [
-        "buttons.admin_answer_menu.redirect",
-        "buttons.admin_answer_menu.send_faq",
-        "buttons.admin_answer_menu.discard",
-        "buttons.admin_answer_menu.skip",
-    ]
-    admin_settings: Final = [
-        "buttons.admin_settings.select_name",
-        "buttons.admin_settings.select_department",
-        "buttons.admin_settings.help",
-        "buttons.admin_settings.logout",
-    ]
-    su_admin_settings: Final = [
-        "buttons.su_admin_settings.vie_statistics",
-        "buttons.su_admin_settings.global_message_for_all",
-        "buttons.su_admin_settings.global_message_for_waiting",
-        "buttons.su_admin_settings.edit_text",
-        "buttons.su_admin_settings.see_admin_names",
-        "buttons.su_admin_settings.create_admin",
-        "buttons.su_admin_settings.delete_admins",
-        "buttons.su_admin_settings.add_department",
-        "buttons.su_admin_settings.remove_department",
-    ]
-    maintainer_settings: Final = [
-        "buttons.maintainer_settings.global_message_for_admins",
-        "buttons.maintainer_settings.global_message_for_su_admins",
-        "buttons.maintainer_settings.create_su_admin",
-        "buttons.maintainer_settings.backup_db",
-        "buttons.maintainer_settings.backup_logs",
-        "buttons.maintainer_settings.listen_to_errors",
-    ]
+@dataclass
+class ButtonGroup:
+    button_strings: list[str]
+    inline_buttons: list[InlineKeyboardButton]
 
+    @staticmethod
+    def from_strings(button_strings: Iterable[str]):
+        new = ButtonGroup()
+        new.button_strings = list(button_strings)
+        new.update()
 
-def generate_reply_keyboard(keyboard_options: Iterable[str]):
-    return ReplyKeyboardMarkup(
-        keyboard=[[item] for item in keyboard_options],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-        is_persistent=True,
-    )
-
-
-def generate_inline_keyboard(keyboard_options: Iterable[str]):
-    options_list = list(keyboard_options)
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=str(item), callback_data=options_list.index(item)
-                )
-            ]
-            for item in keyboard_options
+    def update(self, offset=0):
+        self.inline_buttons = [
+            InlineKeyboardButton(text=self.button_strings[i], callback_data=i + offset)
+            for i in len(self.button_strings)
         ]
-    )
+
+    def gen_inline_keyboard(self, extras: Sequence[InlineKeyboardButton]):
+        return InlineKeyboardMarkup.from_column(self.inline_buttons + [extras])
+
+    def gen_reply_keyboard(self):
+        return ReplyKeyboardMarkup.from_column(
+            self.button_strings,
+            resize_keyboard=True,
+            one_time_keyboard=True,
+            is_persistent=True,
+        )
+
+    def __getitem__(self, name) -> InlineKeyboardButton:
+        return self.inline_buttons[name]
 
 
-def generate_inline_keyboard_with_custom_callback_data_and_return(data: Dict[str, str]):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=str(key), callback_data=value)]
-            for key, value in data.items()
-        ]
-        + [
-            [
-                InlineKeyboardButton(
-                    text=persistent_dynamic.get("buttons.go_back"),
-                    callback_data=types.GO_BACK_CODE,
-                )
-            ]
-        ],
-    )
+class KeyboardDefinitions:
+    instance = None
+
+    def __new__(cls):
+        if not cls.instance:
+            cls.instance = super()
+
+        return cls.instance
+
+    def __init__(self, kbds: str):
+        self.keyboards: List[ButtonGroup] = []
+        for keyboard in persistent_dynamic.get(kbds).keys():
+            keyboard[keyboard] = ButtonGroup(
+                persistent_dynamic.get(f"{kbds}.{keyboard}")
+            )
+
+    @classmethod
+    def __getitem__(cls, name) -> ButtonGroup:
+        return cls.instance.keyboards[name]
 
 
-def generate_inline_keyboard_with_return(keyboard_options: Iterable[str]):
-    options_list = list(keyboard_options)
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=str(item), callback_data=options_list.index(item)
-                )
-            ]
-            for item in keyboard_options
-        ]
-        + [
-            [
-                InlineKeyboardButton(
-                    text=persistent_dynamic.get("buttons.go_back"),
-                    callback_data=types.GO_BACK_CODE,
-                )
-            ]
-        ],
-    )
+GO_BACK = InlineKeyboardButton(
+    persistent_dynamic.get("buttons.go_back"), callback_data=-1
+)
+
+KeyboardDefinitions("keyboards")
 
 
-async def generate_users_message_keyboard(
+async def __generate_users_message_keyboard(
     update: Update,
 ) -> InlineKeyboardMarkup | None:
     questions: Iterable[models.Question] = await database.select_questions_from_user(
@@ -152,42 +97,17 @@ async def generate_users_message_keyboard(
     )
 
 
-def generate_admin_main_menu(flags: types.AdminFlags):
-    extras = []
+def admin_main_menu(flags: __types.AdminFlags):
+    opt: ButtonGroup = KeyboardDefinitions["optional_settings"]
+    common_menu = KeyboardDefinitions["admin_menu"]
+    opt.update(len(common_menu))
 
-    if flags & types.AdminFlags.IS_SUPER:
-        extras += [
-            [
-                InlineKeyboardButton(
-                    text=persistent_dynamic.get("buttons.optional_settings.su"),
-                    callback_data=2,
-                )
-            ]
-        ]
-    if flags & types.AdminFlags.IS_MAINTAINER:
-        extras += [
-            [
-                InlineKeyboardButton(
-                    text=persistent_dynamic.get("buttons.optional_settings.maintainer"),
-                    callback_data=3,
-                )
-            ]
-        ]
+    if not flags & __types.AdminFlags.IS_MAINTAINER:
+        opt.inline_buttons.pop()
+    if not flags & __types.AdminFlags.IS_SUPER:
+        opt.inline_buttons = opt.inline_buttons[1:]
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=persistent_dynamic.get("buttons.admin_menu.answer_questions"),
-                    callback_data=0,
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=persistent_dynamic.get("buttons.admin_menu.settings"),
-                    callback_data=1,
-                )
-            ],
-        ]
-        + extras
-    )
+    output = common_menu.gen_inline_keyboard(opt.inline_buttons)
+
+    opt.update()
+    return output

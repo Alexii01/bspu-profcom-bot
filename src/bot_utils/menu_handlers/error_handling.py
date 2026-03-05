@@ -9,8 +9,9 @@ from typing import Iterable
 from telegram.constants import ParseMode, MessageLimit
 from telegram import Update
 
-from bot_utils import types, database
+from bot_utils import database
 from bot_utils.custom_context import CustomContext
+from src.bot_utils import __types
 
 jsonpickle.set_preferred_backend("json")
 jsonpickle.set_encoder_options("json", indent=2, ensure_ascii=False)
@@ -115,7 +116,7 @@ async def log_and_recover(
     # Graceful error handling from the user's perspective
     await context.new_msg(
         lookup="text.sorry_error",
-        keyboard=types.Keyboards.GO_BACK,
+        keyboard=__types.Keyboards.GO_BACK,
     )
 
 

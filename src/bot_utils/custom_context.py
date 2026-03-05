@@ -8,9 +8,10 @@ from telegram.ext import (
     ExtBot,
 )
 
-from bot_utils import types, database
+from bot_utils import database
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
 from bot_utils.db_models import Admin, Question
+from src.bot_utils import __types
 
 
 logger = logging.getLogger("custom_context")
@@ -71,9 +72,9 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         del self.admin
 
     def keyboard(
-        self, keyboard: types.Keyboards
+        self, keyboard: __types.Keyboards
     ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
-        if isinstance(keyboard, types.Keyboards):
+        if isinstance(keyboard, __types.Keyboards):
             return runtime_dynamic.get("keyboards")[keyboard]
         else:
             return keyboard
@@ -82,7 +83,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str,
         lookup: str,
-        keyboard: types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ) -> Message:
@@ -97,7 +98,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     async def single_msg(
         self,
         lookup: str = None,
-        keyboard: types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ):
@@ -113,7 +114,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     async def new_msg(
         self,
         lookup: str = None,
-        keyboard: types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ):
@@ -130,7 +131,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     async def edit_last_msg(
         self,
         lookup: str = None,
-        keyboard: types.Keyboards
+        keyboard: __types.Keyboards
         | ReplyKeyboardMarkup
         | InlineKeyboardMarkup
         | None = None,
@@ -155,7 +156,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         update: Update,
         text: str,
         lookup: str = None,
-        keyboard: types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ):

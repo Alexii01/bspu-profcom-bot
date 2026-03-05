@@ -12,7 +12,6 @@ from telegram.ext import (
 from telegram.ext import filters as msg_filters
 
 from bot_utils import (
-    types,
     database,
     decorators,
 )
@@ -24,7 +23,7 @@ from bot_utils.menu_handlers import (
 )
 
 from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
-from src.bot_utils import keyboards
+from src.bot_utils import __types, keyboards
 
 
 logger = logging.getLogger(__name__)
@@ -43,61 +42,63 @@ def generate_conversation_handler():
     admin_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("admin", callback=admin_menu.init_login)],
         states={
-            types.MainMenuState.ERROR_ENCOUNTERED: [
+            __types.MainMenuState.ERROR_ENCOUNTERED: [
                 CallbackQueryHandler(admin_menu.return_to_main_menu)
             ],
-            types.AdminState.LOGIN: [
+            __types.AdminState.LOGIN: [
                 MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.login)
             ],
-            types.AdminState.MAIN_MENU: [
+            __types.AdminState.MAIN_MENU: [
                 CallbackQueryHandler(admin_menu.main_menu_callback)
             ],
-            types.AdminState.ANSWERING_QUESTIONS: [
+            __types.AdminState.ANSWERING_QUESTIONS: [
                 CallbackQueryHandler(admin_menu.answering_menu_callback),
                 MessageHandler(
                     filters=msg_filters.TEXT, callback=admin_menu.answering_menu_reply
                 ),
             ],
-            types.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT: [
+            __types.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT: [
                 CallbackQueryHandler(admin_menu.redirect_to_department_callback)
             ],
-            types.AdminState.CONFIRMING_QUESTION_DELETION: [
+            __types.AdminState.CONFIRMING_QUESTION_DELETION: [
                 CallbackQueryHandler(admin_menu.confirm_question_deletion_callback)
             ],
-            types.AdminState.SETTINGS: [
+            __types.AdminState.SETTINGS: [
                 CallbackQueryHandler(admin_menu.settings_callback)
             ],
-            types.AdminState.ENTERING_NAME: [
+            __types.AdminState.ENTERING_NAME: [
                 MessageHandler(
                     filters=msg_filters.TEXT, callback=admin_menu.update_name
                 )
             ],
-            types.AdminState.SELECTING_DEPARTMENT: [
+            __types.AdminState.SELECTING_DEPARTMENT: [
                 CallbackQueryHandler(admin_menu.select_department)
             ],
-            types.AdminState.SU_SETTINGS: [
+            __types.AdminState.SU_SETTINGS: [
                 CallbackQueryHandler(admin_menu.su_settings_callback)
             ],
-            types.AdminState.ENTERING_DEPARTMENT_NAME: [
+            __types.AdminState.ENTERING_DEPARTMENT_NAME: [
                 CallbackQueryHandler(admin_menu.return_to_su_settings),
                 MessageHandler(
                     filters=msg_filters.TEXT, callback=admin_menu.new_department
                 ),
             ],
-            types.AdminState.SELECTING_DEPARTMENT_TO_DELETE: [
+            __types.AdminState.SELECTING_DEPARTMENT_TO_DELETE: [
                 CallbackQueryHandler(admin_menu.delete_department_callback)
             ],
-            types.AdminState.SELECTING_ADMIN_TO_DELETE: [
+            __types.AdminState.SELECTING_ADMIN_TO_DELETE: [
                 CallbackQueryHandler(admin_menu.delete_admin_callback)
             ],
-            types.AdminState.MAINTAINER_SETTINGS: [
+            __types.AdminState.MAINTAINER_SETTINGS: [
                 CallbackQueryHandler(admin_menu.maintainer_settings_callback)
             ],
         },
         fallbacks=[
             MessageHandler(filters=msg_filters.TEXT, callback=admin_menu.fallback)
         ],
-        map_to_parent={types.MainMenuState.MAIN_MENU: types.MainMenuState.MAIN_MENU},
+        map_to_parent={
+            __types.MainMenuState.MAIN_MENU: __types.MainMenuState.MAIN_MENU
+        },
         name="Admin panel handler",
         persistent=True,
     )
@@ -113,31 +114,33 @@ def generate_conversation_handler():
             )
         ],
         states={
-            types.QuestionState.MAIN_MENU: [
+            __types.QuestionState.MAIN_MENU: [
                 CallbackQueryHandler(questions_menu.main_callback),
             ],
-            types.QuestionState.DEPARTMENT_MENU: [
+            __types.QuestionState.DEPARTMENT_MENU: [
                 CallbackQueryHandler(questions_menu.department_selected),
             ],
-            types.QuestionState.QUESTION_VIEW_MENU: [
+            __types.QuestionState.QUESTION_VIEW_MENU: [
                 CallbackQueryHandler(questions_menu.view_msg_callback),
             ],
-            types.QuestionState.VIEWING_QUESTION: [
+            __types.QuestionState.VIEWING_QUESTION: [
                 CallbackQueryHandler(questions_menu.questions_list_callback)
             ],
-            types.QuestionState.ASKING_QUESTION: [
+            __types.QuestionState.ASKING_QUESTION: [
                 MessageHandler(
                     filters=msg_filters.TEXT, callback=questions_menu.question
                 ),
             ],
-            types.MainMenuState.ERROR_ENCOUNTERED: [
+            __types.MainMenuState.ERROR_ENCOUNTERED: [
                 CallbackQueryHandler(callback=questions_menu.return_to_main_menu)
             ],
         },
         fallbacks=[
             MessageHandler(filters=msg_filters.TEXT, callback=questions_menu.fallback)
         ],
-        map_to_parent={types.MainMenuState.MAIN_MENU: types.MainMenuState.MAIN_MENU},
+        map_to_parent={
+            __types.MainMenuState.MAIN_MENU: __types.MainMenuState.MAIN_MENU
+        },
         name="Questions handler",
         persistent=True,
     )
@@ -147,8 +150,8 @@ def generate_conversation_handler():
             CommandHandler("admin", callback=admin_menu.init_login),
         ],
         states={
-            types.AdminState.MAIN_MENU: [admin_conv_handler],
-            types.MainMenuState.MAIN_MENU: [
+            __types.AdminState.MAIN_MENU: [admin_conv_handler],
+            __types.MainMenuState.MAIN_MENU: [
                 admin_conv_handler,
                 MessageHandler(
                     filters=msg_filters.Regex(
@@ -176,7 +179,7 @@ def generate_conversation_handler():
                 ),
                 question_conv_handler,
             ],
-            types.MainMenuState.ERROR_ENCOUNTERED: [
+            __types.MainMenuState.ERROR_ENCOUNTERED: [
                 CallbackQueryHandler(callback=main_menu.return_to_main_menu)
             ],
         },
@@ -207,54 +210,54 @@ def generate_conversation_handler():
 )
 def update_keyboards():
     runtime_dynamic.data["keyboards"] = {
-        types.Keyboards.MAIN_MENU: keyboards.generate_reply_keyboard(
+        __types.Keyboards.MAIN_MENU: keyboards.generate_reply_keyboard(
             persistent_dynamic.get("buttons.main_menu").values()
         ),
-        types.Keyboards.QUESTION_MENU: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.QUESTION_MENU: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.questions_menu").values()
         ),
-        types.Keyboards.DEPARTMENTS: keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
+        __types.Keyboards.DEPARTMENTS: keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
             {value: key for key, value in persistent_dynamic.get("departments").items()}
         ),
-        types.Keyboards.VIEW_MESSAGE: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.VIEW_MESSAGE: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.view_question_menu").values()
         ),
-        types.Keyboards.ADMIN_ANSWER_MENU: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.ADMIN_ANSWER_MENU: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.admin_answer_menu").values()
         ),
-        types.Keyboards.ADMIN_SETTINGS: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.ADMIN_SETTINGS: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.admin_settings").values()
         ),
-        types.Keyboards.SU_ADMIN_SETTINGS: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.SU_ADMIN_SETTINGS: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.su_admin_settings").values()
         ),
-        types.Keyboards.MAINTAINER_SETTINGS: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.MAINTAINER_SETTINGS: keyboards.generate_inline_keyboard_with_return(
             persistent_dynamic.get("buttons.maintainer_settings").values()
         ),
-        types.Keyboards.CONFIRM: keyboards.generate_inline_keyboard_with_return(
+        __types.Keyboards.CONFIRM: keyboards.generate_inline_keyboard_with_return(
             [persistent_dynamic.get("buttons.confirm")]
         ),
-        types.Keyboards.GO_BACK: keyboards.generate_inline_keyboard_with_return([]),
+        __types.Keyboards.GO_BACK: keyboards.generate_inline_keyboard_with_return([]),
         "lists": {
-            types.Keyboards.QUESTION_MENU: list(
+            __types.Keyboards.QUESTION_MENU: list(
                 persistent_dynamic.get("buttons.questions_menu").values()
             ),
-            types.Keyboards.DEPARTMENTS: list(
+            __types.Keyboards.DEPARTMENTS: list(
                 persistent_dynamic.get("departments").values()
             ),
-            types.Keyboards.VIEW_MESSAGE: list(
+            __types.Keyboards.VIEW_MESSAGE: list(
                 persistent_dynamic.get("buttons.view_question_menu").values()
             ),
-            types.Keyboards.ADMIN_ANSWER_MENU: list(
+            __types.Keyboards.ADMIN_ANSWER_MENU: list(
                 persistent_dynamic.get("buttons.admin_answer_menu").values()
             ),
-            types.Keyboards.ADMIN_SETTINGS: list(
+            __types.Keyboards.ADMIN_SETTINGS: list(
                 persistent_dynamic.get("buttons.admin_settings").values()
             ),
-            types.Keyboards.SU_ADMIN_SETTINGS: list(
+            __types.Keyboards.SU_ADMIN_SETTINGS: list(
                 persistent_dynamic.get("buttons.su_admin_settings").values()
             ),
-            types.Keyboards.MAINTAINER_SETTINGS: list(
+            __types.Keyboards.MAINTAINER_SETTINGS: list(
                 persistent_dynamic.get("buttons.maintainer_settings").values()
             ),
         },
@@ -270,7 +273,7 @@ def update_keyboards():
 def dynamic_data_setup():
     database.setup_sqlite_db()
     # Dumping to guarantee proper data format (only indentation as of now)
-    persistent_dynamic.load(str(types.FileNames.DEFAULTS))
-    persistent_dynamic.dump(str(types.FileNames.DEFAULTS))
+    persistent_dynamic.load(str(__types.FileNames.DEFAULTS))
+    persistent_dynamic.dump(str(__types.FileNames.DEFAULTS))
     # Adding in keyboards
     update_keyboards()

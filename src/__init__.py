@@ -10,13 +10,14 @@ from telegram.ext import (
     PicklePersistence,
 )
 
-from bot_utils import setup, types, custom_context
+from bot_utils import setup, custom_context
 from bot_utils.database import setup_sqlite_db
 from bot_utils.dynamic_data import persistent_dynamic
+from src.bot_utils import __types
 
 # Logging config
 file_handler = logging.handlers.RotatingFileHandler(
-    types.FileNames.LOG, maxBytes=1024 * 1024, backupCount=3
+    __types.FileNames.LOG, maxBytes=1024 * 1024, backupCount=3
 )
 
 file_handler.setLevel(logging.DEBUG)
@@ -45,7 +46,7 @@ logging.getLogger("telegram.ext").setLevel(logging.INFO)
 # EXAMPLE:
 #   123456789:AAHfiqksKZ8WmR2zSjiQ7_v4TMAKdiHm9T0
 #   @examplebot
-with open(types.FileNames.CONFIG, encoding="utf-8") as config:
+with open(__types.FileNames.CONFIG, encoding="utf-8") as config:
     data = config.read().splitlines(keepends=False)
     data = [line for line in data if (not line.startswith("#")) and (not line == "")]
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     )
 
     persistence = PicklePersistence(
-        filepath=types.FileNames.PERSISTENCE, context_types=smart_context
+        filepath=__types.FileNames.PERSISTENCE, context_types=smart_context
     )
     app = (
         Application.builder()

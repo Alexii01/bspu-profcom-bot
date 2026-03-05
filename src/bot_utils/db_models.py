@@ -6,8 +6,9 @@ import functools
 import bcrypt
 import string
 
-from bot_utils import types, database
+from bot_utils import database
 from bot_utils.models import SeqGenerator
+from src.bot_utils import __types
 
 
 @dataclass
@@ -85,7 +86,7 @@ class Admin:
     public_name: str
     user_id: int | None
     password_hash: str
-    flags: types.AdminFlags
+    flags: __types.AdminFlags
     __is_deleted: bool = False
 
     @staticmethod
@@ -105,7 +106,7 @@ class Admin:
         *,
         public_name: str | None = None,
         name_base: str = "",
-        flags: types.AdminFlags = None,
+        flags: __types.AdminFlags = None,
     ) -> Tuple[Self, str]:
         """Generates a password and initialises the fields with default values,
         then INSERTs into db.
