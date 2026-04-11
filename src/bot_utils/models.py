@@ -6,7 +6,7 @@ import string
 
 import bcrypt
 
-from src.bot_utils import __types
+from bot_utils import localtypes
 
 
 @dataclass
@@ -26,7 +26,7 @@ class Admin:
     public_name: str
     user_id: int | None
     password_hash: str
-    flags: __types.AdminFlags
+    flags: localtypes.AdminFlags
 
 
 class AdminFactory:
@@ -49,12 +49,12 @@ class AdminFactory:
     @staticmethod
     def generate_admin_password() -> str:
         return AdminFactory.generate_alphanumeric_password(
-            __types.PasswordFormat.PARTS, __types.PasswordFormat.PART_LENGTH
+            localtypes.PasswordFormat.PARTS, localtypes.PasswordFormat.PART_LENGTH
         )
 
     @staticmethod
     async def new_admin(
-        name: str, password: str, flags: __types.AdminFlags | None = None
+        name: str, password: str, flags: localtypes.AdminFlags | None = None
     ) -> Admin:
         return Admin(
             id=uuid4(),
@@ -68,7 +68,7 @@ class AdminFactory:
 
     @staticmethod
     async def new_blank_admin(
-        name_template: str, password: str, flags: __types.AdminFlags | None = None
+        name_template: str, password: str, flags: localtypes.AdminFlags | None = None
     ):
         return await AdminFactory.new_admin(
             name_template + AdminFactory.generate_sequence(string.digits, 6),
@@ -96,5 +96,5 @@ class SeqGenerator:
     @staticmethod
     def generate_admin_password() -> str:
         return AdminFactory.generate_alphanumeric_password(
-            __types.PasswordFormat.PARTS, __types.PasswordFormat.PART_LENGTH
+            localtypes.PasswordFormat.PARTS, localtypes.PasswordFormat.PART_LENGTH
         )

@@ -1,113 +1,92 @@
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Sequence, Dict
+import logging
 
 from telegram import (
     ReplyKeyboardMarkup,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
-from telegram import Update
-import telegram
+import telegram.constants as tc
 
-from bot_utils import models, database, __types
-from bot_utils.dynamic_data import persistent_dynamic
+from bot_utils import db_models
+from bot_utils import localtypes
 
+logger = logging.getLogger(__name__)
 
-@dataclass
-class ButtonGroup:
-    button_strings: list[str]
-    inline_buttons: list[InlineKeyboardButton]
+class Keyboards:
 
     @staticmethod
-    def from_strings(button_strings: Iterable[str]):
-        new = ButtonGroup()
-        new.button_strings = list(button_strings)
-        new.update()
-
-    def update(self, offset=0):
-        self.inline_buttons = [
-            InlineKeyboardButton(text=self.button_strings[i], callback_data=i + offset)
-            for i in len(self.button_strings)
-        ]
-
-    def gen_inline_keyboard(self, extras: Sequence[InlineKeyboardButton]):
-        return InlineKeyboardMarkup.from_column(self.inline_buttons + [extras])
-
-    def gen_reply_keyboard(self):
-        return ReplyKeyboardMarkup.from_column(
-            self.button_strings,
-            resize_keyboard=True,
-            one_time_keyboard=True,
-            is_persistent=True,
+    def __generate_inline_keyboard(keys: Dict[str, str]):
+        return InlineKeyboardMarkup.from_column(
+            [InlineKeyboardButton(text=keys.values()[i], callback_data=i)
+             for i in len(keys) if not keys.values()[i].startswith("_")]
         )
 
-    def __getitem__(self, name) -> InlineKeyboardButton:
-        return self.inline_buttons[name]
+    @staticmethod
+    def __generate_inline_keyboard_with_return(keys: Dict[str, str], return_btn: InlineKeyboardButton):
+                return InlineKeyboardMarkup.from_column(
+            [InlineKeyboardButton(text=keys.values()[i], callback_data=i)
+             for i in len(keys) if not keys.values()[i].startswith("_")] + [return_btn]
+        )
 
-
-class KeyboardDefinitions:
-    instance = None
-
-    def __new__(cls):
-        if not cls.instance:
-            cls.instance = super()
-
-        return cls.instance
-
-    def __init__(self, kbds: str):
-        self.keyboards: List[ButtonGroup] = []
-        for keyboard in persistent_dynamic.get(kbds).keys():
-            keyboard[keyboard] = ButtonGroup(
-                persistent_dynamic.get(f"{kbds}.{keyboard}")
+    @staticmethod
+    def __generate_reply_keyboard(keys: Dict[str, str]):
+        return ReplyKeyboardMarkup.from_column(
+            [key for key in keys.values() if not key.startswith('_')]
             )
 
-    @classmethod
-    def __getitem__(cls, name) -> ButtonGroup:
-        return cls.instance.keyboards[name]
+    def __generate_keyboard(self, name:str, keyboard_data: dict):
+        if "_meta" not in keyboard_data:
+            return
 
+        if keyboard_data["_meta"] & localtypes.KeyboardFlag.IS_REPLY:
+            self.__keyboards[name] = Keyboards.__generate_reply_keyboard(keyboard_data)
 
-GO_BACK = InlineKeyboardButton(
-    persistent_dynamic.get("buttons.go_back"), callback_data=-1
-)
-
-KeyboardDefinitions("keyboards")
-
-
-async def __generate_users_message_keyboard(
-    update: Update,
-) -> InlineKeyboardMarkup | None:
-    questions: Iterable[models.Question] = await database.select_questions_from_user(
-        update.effective_user.id
-    )
-
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
+        if keyboard_data["_meta"] & localtypes.KeyboardFlag.WITH_RETURN:
+            self.__keyboards[name] = Keyboards.__generate_inline_keyboard_with_return(
+                keyboard_data,
                 InlineKeyboardButton(
-                    text=" ".join(question.message.split()[:5])
-                    .encode("utf-8")[
-                        : telegram.constants.InlineKeyboardButtonLimit.MAX_COPY_TEXT
-                    ]
-                    .decode("utf-8", "ignore"),
-                    callback_data=str(question.id),
+                    text=self.__keyboards_data['buttons']['go_back'],
+                    callback_data=-1
                 )
-            ]
-            for question in questions
-        ]
-    )
+            )
+        else:
+            self.__keyboards[name] = Keyboards.__generate_inline_keyboard(keyboard_data)
 
+    def __init__(self, keyboards_data: dict):
+        self.__keyboards_data = keyboards_data
+        self.__keyboards = {}
 
-def admin_main_menu(flags: __types.AdminFlags):
-    opt: ButtonGroup = KeyboardDefinitions["optional_settings"]
-    common_menu = KeyboardDefinitions["admin_menu"]
-    opt.update(len(common_menu))
+        for name, data in keyboards_data.items():
+            self.__generate_keyboard(name, data)
 
-    if not flags & __types.AdminFlags.IS_MAINTAINER:
-        opt.inline_buttons.pop()
-    if not flags & __types.AdminFlags.IS_SUPER:
-        opt.inline_buttons = opt.inline_buttons[1:]
+    def get(self, name:str):
+        return self.__keyboards_data[name]
 
-    output = common_menu.gen_inline_keyboard(opt.inline_buttons)
+    def admin_main_menu(self, admin_type: localtypes.AdminFlags):
+        defaults: Dict = self.__keyboards_data['admin_menu']
+        opt: Dict = self.__keyboards_data['optional_settings']
 
-    opt.update()
-    return output
+        if not admin_type & localtypes.AdminFlags.IS_MAINTAINER:
+            opt.pop('maintiner', None)
+        if not admin_type & localtypes.AdminFlags.IS_SUPER:
+            opt.pop('su', None)
+
+        keys = defaults + opt
+
+        return Keyboards.__generate_inline_keyboard(keys)
+
+    def user_messages(self, questions: List[db_models.Question]):
+        return InlineKeyboardMarkup.from_column(
+                [
+                    InlineKeyboardButton(
+                        text=" ".join(question.message.split()[:5])
+                        .encode("utf-8")[
+                            : tc.InlineKeyboardButtonLimit.MAX_COPY_TEXT
+                        ]
+                        .decode("utf-8", "ignore"),
+                        callback_data=str(question.id),
+                    ) for question in questions
+                ]
+        )

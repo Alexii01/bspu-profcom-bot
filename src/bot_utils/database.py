@@ -8,13 +8,13 @@ import functools
 from typing import Iterable
 
 from bot_utils import models, decorators
-from src.bot_utils import __types
+from bot_utils import localtypes
 
 logger = logging.getLogger(__name__)
 
 
 __MAKE_SCHEMA = f"""
-    CREATE TABLE IF NOT EXISTS {__types.DatabaseTables.ADMINS} (
+    CREATE TABLE IF NOT EXISTS {localtypes.DatabaseTables.ADMINS} (
         id TEXT PRIMARY KEY,
         public_name TEXT,
         user_id INT UNIQUE,
@@ -22,7 +22,7 @@ __MAKE_SCHEMA = f"""
         flags INT
     );
 
-    CREATE TABLE IF NOT EXISTS {__types.DatabaseTables.QUESTIONS} (
+    CREATE TABLE IF NOT EXISTS {localtypes.DatabaseTables.QUESTIONS} (
         id TEXT PRIMARY KEY,
         user_id INT,
         department TEXT,
@@ -33,49 +33,49 @@ __MAKE_SCHEMA = f"""
     );
     """
 
-__INSERT_ADMIN = f"INSERT INTO {__types.DatabaseTables.ADMINS} VALUES (?, ?, ?, ?, ?)"
+__INSERT_ADMIN = f"INSERT INTO {localtypes.DatabaseTables.ADMINS} VALUES (?, ?, ?, ?, ?)"
 __INSERT_QUESTION = (
-    f"INSERT INTO {__types.DatabaseTables.QUESTIONS} VALUES (?, ?, ?, ?, ?, ?, ?)"
+    f"INSERT INTO {localtypes.DatabaseTables.QUESTIONS} VALUES (?, ?, ?, ?, ?, ?, ?)"
 )
 __SUPERUSER_MAINTAINER_EXISTS = f"""
     SELECT EXISTS(
         SELECT 1
-        FROM {__types.DatabaseTables.ADMINS}
-        WHERE (flags & {__types.AdminFlags.IS_SUPER | __types.AdminFlags.IS_MAINTAINER}) = {__types.AdminFlags.IS_SUPER | __types.AdminFlags.IS_MAINTAINER}
+        FROM {localtypes.DatabaseTables.ADMINS}
+        WHERE (flags & {localtypes.AdminFlags.IS_SUPER | localtypes.AdminFlags.IS_MAINTAINER}) = {localtypes.AdminFlags.IS_SUPER | localtypes.AdminFlags.IS_MAINTAINER}
     )"""
-__SELECT_ALL_ADMINS = f"SELECT * FROM {__types.DatabaseTables.ADMINS}"
-__SELECT_ADMIN_WITH_ID = f"SELECT * FROM {__types.DatabaseTables.ADMINS} WHERE id=?"
+__SELECT_ALL_ADMINS = f"SELECT * FROM {localtypes.DatabaseTables.ADMINS}"
+__SELECT_ADMIN_WITH_ID = f"SELECT * FROM {localtypes.DatabaseTables.ADMINS} WHERE id=?"
 __SELECT_ADMIN_WITH_USER_ID = (
-    f"SELECT * FROM {__types.DatabaseTables.ADMINS} WHERE user_id=?"
+    f"SELECT * FROM {localtypes.DatabaseTables.ADMINS} WHERE user_id=?"
 )
 __SELECT_ADMINS_WITH_FLAGS = (
-    f"SELECT * FROM {__types.DatabaseTables.ADMINS} WHERE (flags & ?) = ?"
+    f"SELECT * FROM {localtypes.DatabaseTables.ADMINS} WHERE (flags & ?) = ?"
 )
-__SELECT_ALL_ADMIN_NAMES = f"SELECT public_name FROM {__types.DatabaseTables.ADMINS}"
+__SELECT_ALL_ADMIN_NAMES = f"SELECT public_name FROM {localtypes.DatabaseTables.ADMINS}"
 __ADMIN_WITH_ID_AND_FLAGS_EXISTS = f"""
     SELECT EXISTS(
         SELECT 1
-        FROM {__types.DatabaseTables.ADMINS}
+        FROM {localtypes.DatabaseTables.ADMINS}
         WHERE id=? AND (flags & ?) = ?
     )"""
 __SELECT_ADMINS_WITHOUT_FLAGS = f"""
     SELECT *
-    FROM {__types.DatabaseTables.ADMINS}
+    FROM {localtypes.DatabaseTables.ADMINS}
     WHERE (~flags & ?) = ?;
 """
 __ADMIN_WITH_ID_EXISTS = f"""
     SELECT EXISTS(
         SELECT 1
-        FROM {__types.DatabaseTables.ADMINS}
+        FROM {localtypes.DatabaseTables.ADMINS}
         WHERE id=?
     )
     """
 __SELECT_OLDEST_QUESTION = (
-    f"SELECT * FROM {__types.DatabaseTables.QUESTIONS} ORDER BY asked_date ASC LIMIT 1 "
+    f"SELECT * FROM {localtypes.DatabaseTables.QUESTIONS} ORDER BY asked_date ASC LIMIT 1 "
 )
 __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT = f"""
     SELECT *
-    FROM {__types.DatabaseTables.QUESTIONS}
+    FROM {localtypes.DatabaseTables.QUESTIONS}
     WHERE department=?
     ORDER BY asked_date
     ASC LIMIT 1
@@ -88,40 +88,40 @@ __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT_BUT_NOT_IDS = """
     ASC LIMIT 1
 """
 __SELECT_QUESTIONS_FROM_USER = (
-    f"SELECT * FROM {__types.DatabaseTables.QUESTIONS} WHERE user_id=?"
+    f"SELECT * FROM {localtypes.DatabaseTables.QUESTIONS} WHERE user_id=?"
 )
 __SELECT_QUESTION_WITH_ID = (
-    f"SELECT * FROM {__types.DatabaseTables.QUESTIONS} WHERE id=?"
+    f"SELECT * FROM {localtypes.DatabaseTables.QUESTIONS} WHERE id=?"
 )
 __UPDATE_QUESTION_DEPARTMENT_WITH_ID = (
-    f"UPDATE {__types.DatabaseTables.QUESTIONS} SET department=? WHERE id=?"
+    f"UPDATE {localtypes.DatabaseTables.QUESTIONS} SET department=? WHERE id=?"
 )
 __SELECT_USERS_WITH_QUESTIONS = (
-    f"SELECT DISTINCT user_id FROM {__types.DatabaseTables.QUESTIONS}"
+    f"SELECT DISTINCT user_id FROM {localtypes.DatabaseTables.QUESTIONS}"
 )
-__DELETE_QUESTION_WITH_ID = f"DELETE FROM {__types.DatabaseTables.QUESTIONS} WHERE id=?"
+__DELETE_QUESTION_WITH_ID = f"DELETE FROM {localtypes.DatabaseTables.QUESTIONS} WHERE id=?"
 __SELECT_MAINTAINERS_USER_IDS = f"""
     SELECT user_id
-    FROM {__types.DatabaseTables.ADMINS}
-    WHERE (flags & {__types.AdminFlags.IS_MAINTAINER}) = {__types.AdminFlags.IS_MAINTAINER}"""
+    FROM {localtypes.DatabaseTables.ADMINS}
+    WHERE (flags & {localtypes.AdminFlags.IS_MAINTAINER}) = {localtypes.AdminFlags.IS_MAINTAINER}"""
 __SELECT_ADMINS_WITHOUT_ASSOCIATED_USER = (
-    f"SELECT * FROM {__types.DatabaseTables.ADMINS} WHERE user_id IS NULL"
+    f"SELECT * FROM {localtypes.DatabaseTables.ADMINS} WHERE user_id IS NULL"
 )
 __UPDATE_ADMIN_USER_ID_WITH_ID = (
-    f"UPDATE {__types.DatabaseTables.ADMINS} SET user_id=? WHERE id=?"
+    f"UPDATE {localtypes.DatabaseTables.ADMINS} SET user_id=? WHERE id=?"
 )
 __UPDATE_ADMIN_NAME_WITH_ID = (
-    f"UPDATE {__types.DatabaseTables.ADMINS} SET public_name=? where id=?"
+    f"UPDATE {localtypes.DatabaseTables.ADMINS} SET public_name=? where id=?"
 )
-__DELETE_ADMIN_WITH_ID = f"DELETE FROM {__types.DatabaseTables.ADMINS} WHERE id=?"
+__DELETE_ADMIN_WITH_ID = f"DELETE FROM {localtypes.DatabaseTables.ADMINS} WHERE id=?"
 __UPDATE_DISABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID = f"""
-    UPDATE {__types.DatabaseTables.ADMINS}
-    SET flags = (flags & ~{__types.AdminFlags.LOG_ERRORS})
+    UPDATE {localtypes.DatabaseTables.ADMINS}
+    SET flags = (flags & ~{localtypes.AdminFlags.LOG_ERRORS})
     WHERE id=?
     """
 __UPDATE_ENABLE_ERROR_LISTENER_FOR_ADMIN_WITH_ID = f"""
-    UPDATE {__types.DatabaseTables.ADMINS}
-    SET flags = (flags | {__types.AdminFlags.LOG_ERRORS})
+    UPDATE {localtypes.DatabaseTables.ADMINS}
+    SET flags = (flags | {localtypes.AdminFlags.LOG_ERRORS})
     WHERE id=?
 """
 
@@ -155,7 +155,7 @@ def __question_factory(conn: aiosqlite.Connection, question: tuple):
 def __with_connection(func):
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
-        async with aiosqlite.connect(__types.FileNames.DB) as connection:
+        async with aiosqlite.connect(localtypes.FileNames.DB) as connection:
             try:
                 result = await func(connection, *args, **kwargs)
                 await connection.commit()
@@ -232,10 +232,10 @@ async def __create_super_maintainer_if_not_present(conn: aiosqlite.Connection):
     # Create super admin
     password = models.AdminFactory.generate_admin_password()
     su = models.AdminFactory.new_admin(
-        "su", password, __types.AdminFlags.IS_SUPER | __types.AdminFlags.IS_MAINTAINER
+        "su", password, localtypes.AdminFlags.IS_SUPER | localtypes.AdminFlags.IS_MAINTAINER
     )
     # Save the password for future reference
-    with open(__types.FileNames.FIRST_SU_PASSWORD, mode="w") as file:
+    with open(localtypes.FileNames.FIRST_SU_PASSWORD, mode="w") as file:
         file.write(password)
     del password
     # Add to db
@@ -332,7 +332,7 @@ async def update_admin_user_id(conn: aiosqlite.Connection, user_id: int, id: int
 
 @__with_connection
 async def admin_has_flags(
-    conn: aiosqlite.Connection, id: str, flags: __types.AdminFlags
+    conn: aiosqlite.Connection, id: str, flags: localtypes.AdminFlags
 ) -> bool:
     async with conn.execute(
         __ADMIN_WITH_ID_AND_FLAGS_EXISTS,
@@ -389,7 +389,7 @@ async def delete_admin_with_id(conn: aiosqlite.Connection, id: str):
 
 @__with_connection
 async def select_admins_without_flags(
-    conn: aiosqlite.Connection, flags: __types.AdminFlags
+    conn: aiosqlite.Connection, flags: localtypes.AdminFlags
 ):
     async with conn.execute(
         __SELECT_ADMINS_WITHOUT_FLAGS,
@@ -404,7 +404,7 @@ async def select_admins_without_flags(
 
 async def select_lowest_level_admins():
     return await select_admins_without_flags(
-        __types.AdminFlags.IS_SUPER | __types.AdminFlags.IS_MAINTAINER
+        localtypes.AdminFlags.IS_SUPER | localtypes.AdminFlags.IS_MAINTAINER
     )
 
 
@@ -453,7 +453,7 @@ async def select_oldest_question_from_department_but_not_ids(
 ):
     async with conn.execute(
         __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT_BUT_NOT_IDS.format(
-            __types.DatabaseTables.QUESTIONS, ", ".join("?" for _ in ids)
+            localtypes.DatabaseTables.QUESTIONS, ", ".join("?" for _ in ids)
         ),
         [department] + ids,
     ) as cursor:

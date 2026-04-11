@@ -8,7 +8,7 @@ import string
 
 from bot_utils import database
 from bot_utils.models import SeqGenerator
-from src.bot_utils import __types
+from bot_utils import localtypes
 
 
 @dataclass
@@ -19,6 +19,7 @@ class Question:
     asked_date: str | datetime
     answered_by: int | None
     answered_date: str | datetime | None
+    message: str
     is_in_db = False
     is_deleted = False
 
@@ -86,7 +87,7 @@ class Admin:
     public_name: str
     user_id: int | None
     password_hash: str
-    flags: __types.AdminFlags
+    flags: localtypes.AdminFlags
     __is_deleted: bool = False
 
     @staticmethod
@@ -106,7 +107,7 @@ class Admin:
         *,
         public_name: str | None = None,
         name_base: str = "",
-        flags: __types.AdminFlags = None,
+        flags: localtypes.AdminFlags = None,
     ) -> Tuple[Self, str]:
         """Generates a password and initialises the fields with default values,
         then INSERTs into db.

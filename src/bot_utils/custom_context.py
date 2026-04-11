@@ -9,9 +9,11 @@ from telegram.ext import (
 )
 
 from bot_utils import database
-from bot_utils.dynamic_data import persistent_dynamic, runtime_dynamic
+
+from bot_utils.dynamic_data import SharedDynamicDataClass
+from bot_utils.keyboards import Keyboards
 from bot_utils.db_models import Admin, Question
-from src.bot_utils import __types
+from bot_utils import localtypes
 
 
 logger = logging.getLogger("custom_context")
@@ -19,8 +21,21 @@ logger = logging.getLogger("custom_context")
 
 class BotContext:
     def __init__(self):
-        self.reserved_questions = []
+        self.reserved_questions = None
+        self.persistent_data = None
+        self.runtime_data = None
+        self.keyboards = None
+        self.__is_setup = False
 
+    def configure(self, defaults: str):
+        if(self.__is_setup):
+            return
+
+        self.reserved_questions = []
+        self.persistent_data: SharedDynamicDataClass = SharedDynamicDataClass("persistent_bot_data", defaults)
+        self.runtime_data: SharedDynamicDataClass = SharedDynamicDataClass("runtime_bot_data")
+        self.keyboards: Keyboards = Keyboards(self.persistent_data.get('keyboard_data'))
+        self.__is_setup = True
 
 class ChatContext:
     """Class for chat view and menu-specific context interactions"""
@@ -52,6 +67,7 @@ class ChatContext:
 class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     def __init__(self, application, chat_id=None, user_id=None):
         super().__init__(application, chat_id, user_id)
+        self.bot_data.configure(localtypes.FileNames.DEFAULTS)
         self.admin_menu = self.chat_data.admin_menu
         self.question_menu = self.chat_data.question_menu
         self.admin = self.chat_data.admin_menu.user
@@ -71,42 +87,28 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     def logout(self):
         del self.admin
 
-    def keyboard(
-        self, keyboard: __types.Keyboards
+    def resolve_keyboard(
+        self, keyboard: localtypes.Keyboards | str | InlineKeyboardMarkup | ReplyKeyboardMarkup
     ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
-        if isinstance(keyboard, __types.Keyboards):
-            return runtime_dynamic.get("keyboards")[keyboard]
-        else:
-            return keyboard
+        if isinstance(keyboard, str):
+            return self.bot_data.keyboards.get(keyboard)
+        if isinstance(keyboard, localtypes.Keyboards):
+            return self.bot_data.keyboards.get(str(keyboard))
+
+        return keyboard
 
     async def __send_msg(
         self,
         text: str,
         lookup: str,
-        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: localtypes.Keyboards | str | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ) -> Message:
         return await self.bot.send_message(
             chat_id=self._chat_id,
-            text=text if text else persistent_dynamic.get(lookup),
-            reply_markup=self.keyboard(keyboard),
-            *args,
-            **kwargs,
-        )
-
-    async def single_msg(
-        self,
-        lookup: str = None,
-        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
-        *args,
-        **kwargs,
-    ):
-        await self.clear_keyboard()
-        self.chat_data.last_message = await self.__send_msg(
-            text=None,
-            lookup=lookup,
-            keyboard=keyboard,
+            text=text if text else self.bot_data.persistent_data.get(lookup),
+            reply_markup=self.resolve_keyboard(keyboard),
             *args,
             **kwargs,
         )
@@ -114,7 +116,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     async def new_msg(
         self,
         lookup: str = None,
-        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: localtypes.Keyboards | str | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ):
@@ -131,7 +133,8 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     async def edit_last_msg(
         self,
         lookup: str = None,
-        keyboard: __types.Keyboards
+        keyboard: localtypes.Keyboards
+        | str
         | ReplyKeyboardMarkup
         | InlineKeyboardMarkup
         | None = None,
@@ -140,10 +143,10 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     ):
         """Edits last message or clears keyboard if called with no args"""
         self.chat_data.last_message = await self.chat_data.last_message.edit_text(
-            text=persistent_dynamic.get(lookup)
+            text=self.bot_data.persistent_data.get(lookup)
             if lookup
             else self.chat_data.last_message.text,
-            reply_markup=self.keyboard(keyboard),
+            reply_markup=self.resolve_keyboard(keyboard),
             *args,
             **kwargs,
         )
@@ -156,7 +159,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         update: Update,
         text: str,
         lookup: str = None,
-        keyboard: __types.Keyboards | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
+        keyboard: localtypes.Keyboards | str | ReplyKeyboardMarkup | InlineKeyboardMarkup = None,
         *args,
         **kwargs,
     ):
@@ -164,7 +167,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
             await self.edit_last_msg(
                 text=text,
                 lookup=lookup,
-                keyboard=self.keyboard(keyboard),
+                keyboard=self.resolve_keyboard(keyboard),
                 *args,
                 **kwargs,
             )
@@ -173,7 +176,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
                 update=update,
                 text=text,
                 lookup=lookup,
-                keyboard=self.keyboard(keyboard),
+                keyboard=self.resolve_keyboard(keyboard),
                 *args,
                 **kwargs,
             )

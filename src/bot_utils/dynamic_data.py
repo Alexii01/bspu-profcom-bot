@@ -54,7 +54,3 @@ class SharedDynamicDataClass:
                 raise KeyError(f"No key {step} from {key} in SharedDynamicDataClass")
 
         return handle
-
-
-persistent_dynamic = SharedDynamicDataClass("persistent_dynamic", {})
-runtime_dynamic = SharedDynamicDataClass("runtime_dynamic", {})
