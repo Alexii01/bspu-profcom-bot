@@ -1,81 +1,102 @@
 import html
 import traceback
-import json
-import jsonpickle
-from logging import Logger
+
+import logging
 import functools
+import json
 from typing import Iterable
+from json import JSONEncoder
 
 from telegram.constants import ParseMode, MessageLimit
 from telegram import Update
 
 from bot_utils import database, localtypes
-from bot_utils.custom_context import CustomContext
-
-jsonpickle.set_preferred_backend("json")
-jsonpickle.set_encoder_options("json", indent=2, ensure_ascii=False)
+from bot_utils import custom_context
 
 
-# TODO: REVIEW
+class BotContextEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, custom_context.BotContext):
+            return {
+                "reserved_questions": obj.reserved_questions,
+                "persistent_data": obj.persistent_data.data,
+                "runtime_data": obj.runtime_data.data,
+            }
+
+        return super().default(obj)
+
+
+class ChatContextEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, custom_context.ChatContext):
+            return {
+                "last_message": {
+                    obj.last_message.id,
+                    obj.last_message.chat_id,
+                    obj.last_message.text,
+                },
+                # "admin_menu": obj.admin_menu.__dict__,
+                # "question_menu": obj.question_menu.__dict__
+            }
+
+
 def split_message_into_valid_chunks(msg: str, max_chunk_length: int) -> Iterable[str]:
     chunks = []
-    msg_len = len(msg)
-    begin = 0
-    end = min(msg_len, max_chunk_length)
 
-    counter = 0
-    pending_chunk = ""
-    while begin < msg_len and counter < 50:
-        if msg.startswith("<pre>", begin, end):
-            # If we're parsing a pre block, set it as a chunk if it fits or skip
-            split_pos = msg.rfind("</pre>", begin, end)
-            if split_pos != -1:
-                new_chunk = msg[begin : split_pos + 6]
-                begin = split_pos + 6
-                end = min(msg_len, begin + max_chunk_length)
-            else:
-                split_pos = msg.rfind("\n", begin, end - 5)
-                msg = msg[:split_pos] + "<\pre><pre>" + msg[split_pos:]
+    lines = msg.split("\n")
+    chunkbegin = 0
+    chunkend = 0
+    chunklen = 0
+    unfinished_pre_block = False
+    i = 0
 
+    def stash_chunk():
+        if unfinished_pre_block:
+            lines[chunkend - 1] += "</pre>"
+            lines[chunkend] = "<pre>" + lines[chunkend]
+
+        chunks.append("\n".join(lines[chunkbegin:chunkend]))
+
+    while i < len(lines):
+        if lines[i].startswith("<pre>"):
+            unfinished_pre_block = True
+        if lines[i].endswith("</pre>"):
+            unfinished_pre_block = False
+
+        if chunklen + len(lines[i]) + 6 < max_chunk_length:
+            chunkend = i
+            chunklen += len(lines[i])
         else:
-            # If this is not a pre block, consider a chunk if fits or skip
-            split_pos = msg.find("<pre>", begin, end)
-            if split_pos != -1:
-                new_chunk = msg[begin:split_pos]
-                begin = split_pos
-                end = min(msg_len, begin + max_chunk_length)
+            stash_chunk()
+            chunkbegin = chunkend
+            chunklen = 0
 
-            else:
-                new_chunk = msg[
-                    min(begin + 5, msg_len) : min(begin + max_chunk_length, msg_len)
-                ]
-                begin = msg.find("<pre>", min(end + 6, msg_len), msg_len)
-                end = min(msg_len, begin + max_chunk_length)
-        # If chunks are small enough, merge them
-        if len(new_chunk) + len(pending_chunk) < max_chunk_length:
-            pending_chunk += new_chunk
+        i += 1
 
-        else:
-            # If the chunks overflow add to
-            chunks.append(pending_chunk)
-            pending_chunk = new_chunk
-
-        new_chunk = ""
-        counter += 1
-
-    if pending_chunk != "":
-        chunks.append(pending_chunk)
+    # For those chunks that didn't cause an overflow
+    chunkend = len(lines)
+    stash_chunk()
 
     return chunks
 
 
 async def log_and_recover(
-    logger: Logger,
+    logger: logging.Logger,
     error: Exception,
     update: Update,
-    context: CustomContext,
+    context: custom_context.CustomContext,
 ):
-    # Three functions: log to logger, send message to maintainer, tell user of an error and return them to a safe state
+    # Three functions:
+    #   1) log to logger,
+    #   2) send message to maintainer,
+    #   3) tell user of an error and return them to a safe state
+
+    # Graceful error handling from the user's perspective
+    # (Do first to avoid leaving user in a bad state)
+    await context.edit_last_msg(
+        lookup="text.sorry_error",
+        keyboard=localtypes.KeyboardsAliases.GO_BACK,
+    )
 
     # LOGGING TO DEVELOPER
     tb_list = traceback.format_exception(None, error, error.__traceback__)
@@ -85,49 +106,80 @@ async def log_and_recover(
     logger.error(
         f"{type(error).__name__}({error})\n"
         "An exception was raised while handling an update\n"
-        f"update = {jsonpickle.encode(update_str)}\n\n"
-        f"context.bot_data = {jsonpickle.encode(context.bot_data)}\n\n"
-        f"context.chat_data = {jsonpickle.encode(context.chat_data)}\n\n"
-        f"context.user_data = {jsonpickle.encode(context.user_data)}\n\n"
+        f"update = {json.dumps(update_str, indent=2, ensure_ascii=False)}\n\n"
+        f"context.bot_data = {
+            json.dumps(
+                context.bot_data,
+                indent=2,
+                ensure_ascii=False,
+                cls=BotContextEncoder,
+            )
+        }\n\n"
+        f"context.chat_data = {
+            json.dumps(
+                context.chat_data,
+                indent=2,
+                ensure_ascii=False,
+                cls=ChatContextEncoder,
+            )
+        }\n\n"
+        f"context.user_data = {
+            json.dumps(context.user_data, indent=2, ensure_ascii=False)
+        }\n\n"
         f"{tb_string}"
     )
 
     message = (
         "An exception was raised while handling an update\n"
-        f"<pre>update = {html.escape(jsonpickle.encode(update_str))}</pre>\n\n"
-        f"<pre>context.bot_data = {html.escape(jsonpickle.encode(context.bot_data))}</pre>\n\n"
-        f"<pre>context.chat_data = {html.escape(jsonpickle.encode(context.chat_data))}</pre>\n\n"
-        f"<pre>context.user_data = {html.escape(jsonpickle.encode(context.user_data))}</pre>\n\n"
+        f"<pre>update = {
+            html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))
+        }</pre>\n\n"
+        f"<pre>context.chat_data = {
+            html.escape(
+                json.dumps(
+                    context.chat_data,
+                    indent=2,
+                    ensure_ascii=False,
+                    cls=ChatContextEncoder,
+                )
+            )
+        }</pre>\n\n"
+        f"<pre>context.user_data = {
+            html.escape(json.dumps(context.user_data, indent=2, ensure_ascii=False))
+        }</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"
     )
+
     split_message = split_message_into_valid_chunks(
         message, MessageLimit.MAX_TEXT_LENGTH
     )
 
-    # Sending data to dev
-    devs = await database.select_maintainers_ids()
-    for dev in devs:
-        for chunk in split_message:
-            await context.bot.send_message(
-                chat_id=dev, text=chunk, parse_mode=ParseMode.HTML
-            )
-
-    # Graceful error handling from the user's perspective
-    await context.new_msg(
-        lookup="text.sorry_error",
-        keyboard=localtypes.Keyboards.GO_BACK,
+    # Sending data to dev over telegram
+    devs = await database.select_maintainers_ids_with_flags(
+        localtypes.AdminFlags.LOG_ERRORS
     )
 
+    for dev in devs:
+        for chunk in split_message:
+            try:
+                await context.bot.send_message(
+                    chat_id=dev, text=chunk, parse_mode=ParseMode.HTML
+                )
+            except BaseException:
+                await context.bot.send_message(
+                    chat_id=dev, text="Failed to send error log chunk"
+                )
+                logger.warning(f"Failed to send error log chunk to {dev}")
 
-def log_on_error_and_return(value, logger: Logger, cleanup_func=None):
+
+def log_on_error_and_return(value, logger: logging.Logger, cleanup_func=None):
     def decorator(func):
         @functools.wraps(func)
-        async def wrapper(update: Update, context: CustomContext):
+        async def wrapper(update: Update, context: custom_context.CustomContext):
             try:
                 return await func(update, context)
             except Exception as e:
                 await log_and_recover(logger, e, update, context)
-                context.clear_keyboard()
                 if cleanup_func is not None:
                     cleanup_func(context)
                 return value

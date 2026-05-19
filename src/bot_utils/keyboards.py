@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Iterable, List, Sequence, Dict
+from typing import List, Dict
 import logging
 
 from telegram import (
@@ -14,42 +13,60 @@ from bot_utils import localtypes
 
 logger = logging.getLogger(__name__)
 
-class Keyboards:
 
+class Keyboards:
     @staticmethod
     def __generate_inline_keyboard(keys: Dict[str, str]):
+        keys = list(keys.items())
         return InlineKeyboardMarkup.from_column(
-            [InlineKeyboardButton(text=keys.values()[i], callback_data=i)
-             for i in len(keys) if not keys.values()[i].startswith("_")]
+            [
+                InlineKeyboardButton(text=keys[i][1], callback_data=i)
+                for i in range(len(keys))
+                if not keys[i][0].startswith("_")
+            ]
         )
 
     @staticmethod
-    def __generate_inline_keyboard_with_return(keys: Dict[str, str], return_btn: InlineKeyboardButton):
-                return InlineKeyboardMarkup.from_column(
-            [InlineKeyboardButton(text=keys.values()[i], callback_data=i)
-             for i in len(keys) if not keys.values()[i].startswith("_")] + [return_btn]
+    def __generate_inline_keyboard_with_return(
+        keys: Dict[str, str], return_btn: InlineKeyboardButton
+    ):
+        keys = list(keys.items())
+        return InlineKeyboardMarkup.from_column(
+            [
+                InlineKeyboardButton(text=keys[i][1], callback_data=i)
+                for i in range(len(keys))
+                if not keys[i][0].startswith("_")
+            ]
+            + [return_btn]
         )
 
     @staticmethod
     def __generate_reply_keyboard(keys: Dict[str, str]):
         return ReplyKeyboardMarkup.from_column(
-            [key for key in keys.values() if not key.startswith('_')]
-            )
+            [value for key, value in keys.items() if not key.startswith("_")]
+        )
 
-    def __generate_keyboard(self, name:str, keyboard_data: dict):
-        if "_meta" not in keyboard_data:
+    @staticmethod
+    def __generate_inline_keyboard_with_data(keys: Dict[str, str]):
+        return InlineKeyboardMarkup.from_column(
+            [
+                InlineKeyboardButton(text=value, callback_data=key)
+                for key, value in keys.items()
+                if not key.startswith("_")
+            ]
+        )
+
+    def __generate_keyboard(self, name: str, keyboard_data: dict):
+        if ("_meta" not in keyboard_data) or (name in self.__keyboards):
             return
 
         if keyboard_data["_meta"] & localtypes.KeyboardFlag.IS_REPLY:
             self.__keyboards[name] = Keyboards.__generate_reply_keyboard(keyboard_data)
+            return
 
         if keyboard_data["_meta"] & localtypes.KeyboardFlag.WITH_RETURN:
             self.__keyboards[name] = Keyboards.__generate_inline_keyboard_with_return(
-                keyboard_data,
-                InlineKeyboardButton(
-                    text=self.__keyboards_data['buttons']['go_back'],
-                    callback_data=-1
-                )
+                keyboard_data, self.return_btn
             )
         else:
             self.__keyboards[name] = Keyboards.__generate_inline_keyboard(keyboard_data)
@@ -58,20 +75,31 @@ class Keyboards:
         self.__keyboards_data = keyboards_data
         self.__keyboards = {}
 
+        self.return_btn = InlineKeyboardButton(
+            text=self.__keyboards_data["buttons"]["go_back"],
+            callback_data=localtypes.GO_BACK_CODE,
+        )
+
         for name, data in keyboards_data.items():
             self.__generate_keyboard(name, data)
 
-    def get(self, name:str):
-        return self.__keyboards_data[name]
+    def get(self, name: str):
+        return self.__keyboards[name]
+
+    def get_key_name(self, kbd_name: str, index: int):
+        return list(self.__keyboards_data[kbd_name])[index]
+
+    def get_key_by_name(self, kbd_name: str, key_name: str):
+        return self.__keyboards_data[kbd_name][key_name]
 
     def admin_main_menu(self, admin_type: localtypes.AdminFlags):
-        defaults: Dict = self.__keyboards_data['admin_menu']
-        opt: Dict = self.__keyboards_data['optional_settings']
+        defaults: Dict = self.__keyboards_data["admin_menu"]
+        opt: Dict = self.__keyboards_data["optional_settings"]
 
         if not admin_type & localtypes.AdminFlags.IS_MAINTAINER:
-            opt.pop('maintiner', None)
+            opt.pop("maintiner", None)
         if not admin_type & localtypes.AdminFlags.IS_SUPER:
-            opt.pop('su', None)
+            opt.pop("su", None)
 
         keys = defaults + opt
 
@@ -79,14 +107,17 @@ class Keyboards:
 
     def user_messages(self, questions: List[db_models.Question]):
         return InlineKeyboardMarkup.from_column(
-                [
-                    InlineKeyboardButton(
-                        text=" ".join(question.message.split()[:5])
-                        .encode("utf-8")[
-                            : tc.InlineKeyboardButtonLimit.MAX_COPY_TEXT
-                        ]
-                        .decode("utf-8", "ignore"),
-                        callback_data=str(question.id),
-                    ) for question in questions
-                ]
+            [
+                InlineKeyboardButton(
+                    text=" ".join(question.message.split()[:5])
+                    .encode("utf-8")[: tc.InlineKeyboardButtonLimit.MAX_COPY_TEXT]
+                    .decode("utf-8", "ignore"),
+                    callback_data=str(question.id),
+                )
+                for question in questions
+            ]
+            + [self.return_btn]
         )
+
+    def departments(self, departments: Dict[str, str]):
+        return Keyboards.__generate_inline_keyboard_with_data(departments)

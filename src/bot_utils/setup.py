@@ -129,8 +129,11 @@ def generate_conversation_handler():
                     filters=msg_filters.TEXT, callback=questions_menu.question
                 ),
             ],
+            localtypes.QuestionState.RETURN_TO_MAIN_MENU: [
+                CallbackQueryHandler(questions_menu.return_to_main_menu)
+            ],
             localtypes.MainMenuState.ERROR_ENCOUNTERED: [
-                CallbackQueryHandler(callback=questions_menu.return_to_main_menu)
+                CallbackQueryHandler(main_menu.return_to_main_menu)
             ],
         },
         fallbacks=[
@@ -146,6 +149,7 @@ def generate_conversation_handler():
         entry_points=[
             CommandHandler("start", callback=main_menu.start),
             CommandHandler("admin", callback=admin_menu.init_login),
+            MessageHandler(filters=msg_filters.TEXT, callback=main_menu.start),
         ],
         states={
             localtypes.AdminState.MAIN_MENU: [admin_conv_handler],
@@ -189,4 +193,3 @@ def generate_conversation_handler():
     )
 
     return conv_handler
-

@@ -16,7 +16,7 @@ async def start(update: Update, context: CustomContext) -> int:
 
     await context.new_msg(
         lookup="text.first_bot_message",
-        keyboard=localtypes.Keyboards.MAIN_MENU,
+        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
     )
     return localtypes.MainMenuState.MAIN_MENU
 
@@ -29,7 +29,7 @@ async def faq(update: Update, context: CustomContext) -> int:
     logging.debug("%d: FAQ", update.effective_user.id)
     await context.new_msg(
         lookup="text.show_faq",
-        keyboard=localtypes.Keyboards.MAIN_MENU,
+        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
         parse_mode=TelegramConstants.ParseMode.HTML,
     )
     return localtypes.MainMenuState.MAIN_MENU
@@ -43,7 +43,7 @@ async def events(update: Update, context: CustomContext) -> int:
     logging.debug("%d: Events/Invite us", update.effective_user.id)
     await context.new_msg(
         lookup="text.show_events",
-        keyboard=localtypes.Keyboards.MAIN_MENU,
+        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
     )
     return localtypes.MainMenuState.MAIN_MENU
 
@@ -56,7 +56,7 @@ async def socials(update: Update, context: CustomContext) -> int:
     logging.debug("%d: Socials", update.effective_user.id)
     await context.new_msg(
         lookup="text.show_socials",
-        keyboard=localtypes.Keyboards.MAIN_MENU,
+        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
     )
     return localtypes.MainMenuState.MAIN_MENU
 
@@ -67,18 +67,16 @@ async def fallback(update: Update, context: CustomContext) -> int:
     logging.debug("%d: Main menu fallback", update.effective_user.id)
     await context.new_msg(
         lookup="text.main_menu_fallback",
-        keyboard=localtypes.Keyboards.MAIN_MENU,
+        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
     )
     return localtypes.MainMenuState.MAIN_MENU
 
 
 async def return_to_main_menu(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=context.persistent.get("text.sorry_error")
-    )
+    await context.clear_keyboard()
     await context.new_msg(
         lookup="text.return_to_main_menu",
-        keyboard=localtypes.Keyboards.MAIN_MENU,
+        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
     )
     return localtypes.MainMenuState.MAIN_MENU

@@ -64,6 +64,8 @@ from enum import Enum, IntEnum, StrEnum, IntFlag, auto
 # - Pragmatic Programmer?
 # - Learn Swift UI as practice of similar patterns
 
+GO_BACK_CODE = -1
+
 
 class MainMenuState(Enum):
     MAIN_MENU = auto()
@@ -76,6 +78,7 @@ class QuestionState(Enum):
     QUESTION_VIEW_MENU = auto()
     ASKING_QUESTION = auto()
     VIEWING_QUESTION = auto()
+    RETURN_TO_MAIN_MENU = auto()
 
 
 class AdminState(Enum):
@@ -101,25 +104,28 @@ class AdminFlags(IntFlag):
     NAME_UPDATES = 4
     LOG_ERRORS = 8
 
+
 class KeyboardFlag(IntFlag):
     IS_REPLY = 1
     WITH_RETURN = 2
 
-class Keyboards(StrEnum):
+
+class KeyboardsAliases(StrEnum):
     MAIN_MENU = "main_menu"
     QUESTION_MENU = "questions_menu"
-    DEPARTMENTS = auto()
-    VIEW_MESSAGE = auto()
-    ADMIN_MENU = auto()
     ADMIN_SETTINGS = "admin_settings"
     SU_ADMIN_SETTINGS = "su_admin_settings"
     MAINTAINER_SETTINGS = "maintainer_settings"
     ADMIN_ANSWER_MENU = "admin_answer_menu"
+    VIEW_QUESTION = "view_question_menu"
+    GO_BACK = "go_back"
 
-class GeneratedKeyboards():
+
+class GeneratedKeyboards:
     DEPARTMENTS = auto()
     VIEW_MESSAGE = auto()
     ADMIN_MENU = auto()
+
 
 class BotMemory(IntEnum):
     SELECTED_DEPARTMENT = auto()

@@ -33,7 +33,9 @@ __MAKE_SCHEMA = f"""
     );
     """
 
-__INSERT_ADMIN = f"INSERT INTO {localtypes.DatabaseTables.ADMINS} VALUES (?, ?, ?, ?, ?)"
+__INSERT_ADMIN = (
+    f"INSERT INTO {localtypes.DatabaseTables.ADMINS} VALUES (?, ?, ?, ?, ?)"
+)
 __INSERT_QUESTION = (
     f"INSERT INTO {localtypes.DatabaseTables.QUESTIONS} VALUES (?, ?, ?, ?, ?, ?, ?)"
 )
@@ -70,9 +72,7 @@ __ADMIN_WITH_ID_EXISTS = f"""
         WHERE id=?
     )
     """
-__SELECT_OLDEST_QUESTION = (
-    f"SELECT * FROM {localtypes.DatabaseTables.QUESTIONS} ORDER BY asked_date ASC LIMIT 1 "
-)
+__SELECT_OLDEST_QUESTION = f"SELECT * FROM {localtypes.DatabaseTables.QUESTIONS} ORDER BY asked_date ASC LIMIT 1 "
 __SELECT_OLDEST_QUESTION_FROM_DEPARTMENT = f"""
     SELECT *
     FROM {localtypes.DatabaseTables.QUESTIONS}
@@ -99,11 +99,19 @@ __UPDATE_QUESTION_DEPARTMENT_WITH_ID = (
 __SELECT_USERS_WITH_QUESTIONS = (
     f"SELECT DISTINCT user_id FROM {localtypes.DatabaseTables.QUESTIONS}"
 )
-__DELETE_QUESTION_WITH_ID = f"DELETE FROM {localtypes.DatabaseTables.QUESTIONS} WHERE id=?"
+__DELETE_QUESTION_WITH_ID = (
+    f"DELETE FROM {localtypes.DatabaseTables.QUESTIONS} WHERE id=?"
+)
 __SELECT_MAINTAINERS_USER_IDS = f"""
     SELECT user_id
     FROM {localtypes.DatabaseTables.ADMINS}
     WHERE (flags & {localtypes.AdminFlags.IS_MAINTAINER}) = {localtypes.AdminFlags.IS_MAINTAINER}"""
+__SELECT_MAINTAINERS_USER_IDS_WITH_FLAGS = f"""
+    SELECT user_id
+    FROM {localtypes.DatabaseTables.ADMINS}
+    WHERE (flags & {localtypes.AdminFlags.IS_MAINTAINER}) = {localtypes.AdminFlags.IS_MAINTAINER}
+    AND (flags & ?) = ?
+"""
 __SELECT_ADMINS_WITHOUT_ASSOCIATED_USER = (
     f"SELECT * FROM {localtypes.DatabaseTables.ADMINS} WHERE user_id IS NULL"
 )
@@ -232,7 +240,9 @@ async def __create_super_maintainer_if_not_present(conn: aiosqlite.Connection):
     # Create super admin
     password = models.AdminFactory.generate_admin_password()
     su = models.AdminFactory.new_admin(
-        "su", password, localtypes.AdminFlags.IS_SUPER | localtypes.AdminFlags.IS_MAINTAINER
+        "su",
+        password,
+        localtypes.AdminFlags.IS_SUPER | localtypes.AdminFlags.IS_MAINTAINER,
     )
     # Save the password for future reference
     with open(localtypes.FileNames.FIRST_SU_PASSWORD, mode="w") as file:
@@ -411,6 +421,21 @@ async def select_lowest_level_admins():
 @__with_connection
 async def select_maintainers_ids(conn: aiosqlite.Connection):
     async with conn.execute(__SELECT_MAINTAINERS_USER_IDS) as cursor:
+        cursor.row_factory = __single_element_factory
+        return await cursor.fetchall()
+
+
+@__with_connection
+async def select_maintainers_ids_with_flags(
+    conn: aiosqlite.Connection, flags: localtypes.AdminFlags
+):
+    async with conn.execute(
+        __SELECT_MAINTAINERS_USER_IDS_WITH_FLAGS,
+        (
+            flags,
+            flags,
+        ),
+    ) as cursor:
         cursor.row_factory = __single_element_factory
         return await cursor.fetchall()
 

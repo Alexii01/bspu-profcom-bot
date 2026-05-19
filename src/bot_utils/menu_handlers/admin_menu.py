@@ -54,7 +54,9 @@ async def init_login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return localtypes.AdminState.MAIN_MENU
 
-    await update.message.reply_text(text=context.bot_data.persistent_data.get("text.admin_login"))
+    await update.message.reply_text(
+        text=context.bot_data.persistent_data.get("text.admin_login")
+    )
     return localtypes.AdminState.LOGIN
 
 
@@ -70,7 +72,9 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if result is None:
         await update.message.reply_text(
             text=context.bot_data.persistent_data.get("text.return_to_main_menu"),
-            reply_markup=context.bot_data.runtime_data.get("keyboards")[localtypes.Keyboards.MAIN_MENU],
+            reply_markup=context.bot_data.runtime_data.get("keyboards")[
+                localtypes.KeyboardsAliases.MAIN_MENU
+            ],
         )
         return localtypes.MainMenuState.MAIN_MENU
     else:
@@ -89,7 +93,7 @@ async def output_question_to_answer_via_query(query, question, context):
         + context.bot_data.persistent_data.get("text.review_question_pls"),
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.ADMIN_ANSWER_MENU
+            localtypes.KeyboardsAliases.ADMIN_ANSWER_MENU
         ],
     )
 
@@ -101,7 +105,7 @@ async def output_question_to_answer_via_update(update: Update, question, context
         + context.bot_data.persistent_data.get("text.review_question_pls"),
         parse_mode=ParseMode.MARKDOWN_V2,
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.ADMIN_ANSWER_MENU
+            localtypes.KeyboardsAliases.ADMIN_ANSWER_MENU
         ],
     )
 
@@ -113,7 +117,9 @@ async def answer_another_question_via_query(
 
     if localtypes.BotMemory.ADMIN_SELECTED_DEPARTMENT not in context.chat_data:
         await query.edit_message_text(
-            text=context.bot_data.persistent_data.get("text.admin_select_department_pls"),
+            text=context.bot_data.persistent_data.get(
+                "text.admin_select_department_pls"
+            ),
         )
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -130,7 +136,9 @@ async def answer_another_question_via_query(
         )
         if question is None:
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.no_questions_to_answer"),
+                text=context.bot_data.persistent_data.get(
+                    "text.no_questions_to_answer"
+                ),
             )
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
@@ -193,7 +201,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.edit_message_text(
                 text=context.bot_data.persistent_data.get("text.admin_settings"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.ADMIN_SETTINGS
+                    localtypes.KeyboardsAliases.ADMIN_SETTINGS
                 ],
             )
             return localtypes.AdminState.SETTINGS
@@ -201,7 +209,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.edit_message_text(
                 text=context.bot_data.persistent_data.get("text.admin_settings"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.SU_ADMIN_SETTINGS
+                    localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
                 ],
             )
             return localtypes.AdminState.SU_SETTINGS
@@ -209,7 +217,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.edit_message_text(
                 text=context.bot_data.persistent_data.get("text.admin_settings"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.MAINTAINER_SETTINGS
+                    localtypes.KeyboardsAliases.MAINTAINER_SETTINGS
                 ],
             )
             return localtypes.AdminState.MAINTAINER_SETTINGS
@@ -239,16 +247,18 @@ async def answering_menu_callback(
         )
         return localtypes.AdminState.MAIN_MENU
 
-    match context.bot_data.runtime_data.get("keyboards.lists")[localtypes.Keyboards.ADMIN_ANSWER_MENU][
-        int(query.data)
-    ]:
+    match context.bot_data.runtime_data.get("keyboards.lists")[
+        localtypes.KeyboardsAliases.ADMIN_ANSWER_MENU
+    ][int(query.data)]:
         case button if button == context.bot_data.persistent_data.get(
             "buttons.admin_answer_menu.redirect"
         ):
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.admin_select_department_to_redirect"),
+                text=context.bot_data.persistent_data.get(
+                    "text.admin_select_department_to_redirect"
+                ),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.DEPARTMENTS
+                    localtypes.KeyboardsAliases.DEPARTMENTS
                 ],
             )
             return localtypes.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT
@@ -271,9 +281,11 @@ async def answering_menu_callback(
             "buttons.admin_answer_menu.discard"
         ):
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.confirm_question_deletion"),
+                text=context.bot_data.persistent_data.get(
+                    "text.confirm_question_deletion"
+                ),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.CONFIRM
+                    localtypes.KeyboardsAliases.CONFIRM
                 ],
             )
             return localtypes.AdminState.CONFIRMING_QUESTION_DELETION
@@ -306,7 +318,9 @@ async def confirm_question_deletion_callback(
 
     if int(query.data) == localtypes.GO_BACK_CODE:
         await output_question_to_answer_via_query(
-            query, context.chat_data[localtypes.BotMemory.ADMIN_REVIEWS_QUESTION], context
+            query,
+            context.chat_data[localtypes.BotMemory.ADMIN_REVIEWS_QUESTION],
+            context,
         )
         return localtypes.AdminState.ANSWERING_QUESTIONS
 
@@ -340,12 +354,15 @@ async def redirect_to_department_callback(
     try:
         int(query.data)
         await output_question_to_answer_via_query(
-            query, context.chat_data[localtypes.BotMemory.ADMIN_REVIEWS_QUESTION], context
+            query,
+            context.chat_data[localtypes.BotMemory.ADMIN_REVIEWS_QUESTION],
+            context,
         )
         return localtypes.AdminState.ANSWERING_QUESTIONS
     except ValueError:
         await database.update_question_department_with_id(
-            query.data, context.chat_data[localtypes.BotMemory.ADMIN_REVIEWS_QUESTION].id
+            query.data,
+            context.chat_data[localtypes.BotMemory.ADMIN_REVIEWS_QUESTION].id,
         )
 
         return await answer_another_question_via_query(update, context)
@@ -400,20 +417,22 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return localtypes.AdminState.MAIN_MENU
 
-    match context.bot_data.runtime_data.get("keyboards.lists")[localtypes.Keyboards.ADMIN_SETTINGS][
-        int(query.data)
-    ]:
+    match context.bot_data.runtime_data.get("keyboards.lists")[
+        localtypes.KeyboardsAliases.ADMIN_SETTINGS
+    ][int(query.data)]:
         case button if button == context.bot_data.persistent_data.get(
             "buttons.admin_settings.logout"
         ):
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("buttons.admin_settings.logout")
+                text=context.bot_data.persistent_data.get(
+                    "buttons.admin_settings.logout"
+                )
             )
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=context.bot_data.persistent_data.get("text.return_to_main_menu"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.MAIN_MENU
+                    localtypes.KeyboardsAliases.MAIN_MENU
                 ],
             )
             return localtypes.MainMenuState.MAIN_MENU
@@ -429,16 +448,20 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "buttons.admin_settings.select_department"
         ):
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.admin_select_departments")
+                text=context.bot_data.persistent_data.get(
+                    "text.admin_select_departments"
+                )
                 + context.chat_data.get(
                     localtypes.BotMemory.ADMIN_SELECTED_DEPARTMENT, (None, "не выбран")
                 )[1],
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.DEPARTMENTS
+                    localtypes.KeyboardsAliases.DEPARTMENTS
                 ],
             )
             return localtypes.AdminState.SELECTING_DEPARTMENT
-        case button if button == context.bot_data.persistent_data.get("buttons.admin_settings.help"):
+        case button if button == context.bot_data.persistent_data.get(
+            "buttons.admin_settings.help"
+        ):
             await query.edit_message_text(
                 text=context.bot_data.persistent_data.get("text.admin_instructions"),
             )
@@ -446,7 +469,7 @@ async def settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 chat_id=update.effective_chat.id,
                 text=context.bot_data.persistent_data.get("text.admin_settings"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.ADMIN_SETTINGS
+                    localtypes.KeyboardsAliases.ADMIN_SETTINGS
                 ],
             )
 
@@ -465,7 +488,9 @@ async def update_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     )
     await update.message.reply_text(
         text=context.bot_data.persistent_data.get("text.admin_settings"),
-        reply_markup=context.bot_data.runtime_data.get("keyboards")[localtypes.Keyboards.ADMIN_SETTINGS],
+        reply_markup=context.bot_data.runtime_data.get("keyboards")[
+            localtypes.KeyboardsAliases.ADMIN_SETTINGS
+        ],
     )
     return localtypes.AdminState.SETTINGS
 
@@ -491,7 +516,9 @@ async def select_department(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     await query.edit_message_text(
         text=context.bot_data.persistent_data.get("text.admin_settings"),
-        reply_markup=context.bot_data.runtime_data.get("keyboards")[localtypes.Keyboards.ADMIN_SETTINGS],
+        reply_markup=context.bot_data.runtime_data.get("keyboards")[
+            localtypes.KeyboardsAliases.ADMIN_SETTINGS
+        ],
     )
     return localtypes.AdminState.SETTINGS
 
@@ -518,9 +545,9 @@ async def su_settings_callback(
         )
         return localtypes.AdminState.MAIN_MENU
 
-    match context.bot_data.runtime_data.get("keyboards.lists")[localtypes.Keyboards.SU_ADMIN_SETTINGS][
-        int(query.data)
-    ]:
+    match context.bot_data.runtime_data.get("keyboards.lists")[
+        localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
+    ][int(query.data)]:
         case button if button == context.bot_data.persistent_data.get(
             "buttons.su_admin_settings.see_admin_names"
         ):
@@ -539,7 +566,8 @@ async def su_settings_callback(
         ):
             password = models.AdminFactory.generate_admin_password()
             admin: models.Admin = await models.AdminFactory.new_blank_admin(
-                context.bot_data.persistent_data.get("text.default_admin_name"), password
+                context.bot_data.persistent_data.get("text.default_admin_name"),
+                password,
             )
             await database.insert_admin(admin)
             await query.edit_message_text(
@@ -554,7 +582,9 @@ async def su_settings_callback(
             "buttons.su_admin_settings.delete_admins"
         ):
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.select_admin_to_delete"),
+                text=context.bot_data.persistent_data.get(
+                    "text.select_admin_to_delete"
+                ),
                 reply_markup=keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
                     {
                         '"' + admin.public_name + '"': admin.id
@@ -569,7 +599,7 @@ async def su_settings_callback(
             await query.edit_message_text(
                 text=context.bot_data.persistent_data.get("text.enter_department_name"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.GO_BACK
+                    localtypes.KeyboardsAliases.GO_BACK
                 ],
             )
             return localtypes.AdminState.ENTERING_DEPARTMENT_NAME
@@ -577,11 +607,15 @@ async def su_settings_callback(
             "buttons.su_admin_settings.remove_department"
         ):
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.select_admin_to_delete"),
+                text=context.bot_data.persistent_data.get(
+                    "text.select_admin_to_delete"
+                ),
                 reply_markup=keyboards.generate_inline_keyboard_with_custom_callback_data_and_return(
                     {
                         '"' + name + '"': key
-                        for key, name in context.bot_data.persistent_data.get("departments").items()
+                        for key, name in context.bot_data.persistent_data.get(
+                            "departments"
+                        ).items()
                     }
                 ),
             )
@@ -595,7 +629,7 @@ async def su_settings_callback(
         chat_id=update.effective_chat.id,
         text=context.bot_data.persistent_data.get("text.su_admin_settings"),
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.SU_ADMIN_SETTINGS
+            localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
         ],
     )
 
@@ -625,7 +659,7 @@ async def delete_admin_callback(
         chat_id=update.effective_chat.id,
         text=context.bot_data.persistent_data.get("text.su_admin_settings"),
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.SU_ADMIN_SETTINGS
+            localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
         ],
     )
 
@@ -644,7 +678,9 @@ async def new_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     dept_name_hash = hashlib.sha256(processed_dept_name.encode("utf-8")).hexdigest()
 
-    context.bot_data.persistent_data.get("departments").update({dept_name_hash: dept_name})
+    context.bot_data.persistent_data.get("departments").update(
+        {dept_name_hash: dept_name}
+    )
     context.bot_data.persistent_data.get("old_departments").pop(dept_name_hash, None)
     context.bot_data.persistent_data.dump(localtypes.FileNames.DEFAULTS)
 
@@ -655,7 +691,7 @@ async def new_department(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         text=context.bot_data.persistent_data.get("text.su_admin_settings"),
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.SU_ADMIN_SETTINGS
+            localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
         ],
     )
 
@@ -679,7 +715,7 @@ async def delete_department_callback(
             await query.edit_message_text(
                 text=context.bot_data.persistent_data.get("text.su_admin_settings"),
                 reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                    localtypes.Keyboards.SU_ADMIN_SETTINGS
+                    localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
                 ],
             )
             return localtypes.AdminState.SU_SETTINGS
@@ -698,7 +734,7 @@ async def delete_department_callback(
         chat_id=update.effective_chat.id,
         text=context.bot_data.persistent_data.get("text.su_admin_settings"),
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.SU_ADMIN_SETTINGS
+            localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
         ],
     )
     return localtypes.AdminState.SU_SETTINGS
@@ -726,9 +762,9 @@ async def maintainer_settings_callback(
         )
         return localtypes.AdminState.MAIN_MENU
 
-    match context.bot_data.runtime_data.get("keyboards.lists")[localtypes.Keyboards.MAINTAINER_SETTINGS][
-        int(query.data)
-    ]:
+    match context.bot_data.runtime_data.get("keyboards.lists")[
+        localtypes.KeyboardsAliases.MAINTAINER_SETTINGS
+    ][int(query.data)]:
         case button if button == context.bot_data.persistent_data.get(
             "buttons.maintainer_settings.backup_db"
         ):
@@ -737,7 +773,9 @@ async def maintainer_settings_callback(
                     chat_id=update.effective_chat.id, document=file
                 )
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("buttons.maintainer_settings.backup_db")
+                text=context.bot_data.persistent_data.get(
+                    "buttons.maintainer_settings.backup_db"
+                )
             )
         case button if button == context.bot_data.persistent_data.get(
             "buttons.maintainer_settings.backup_logs"
@@ -747,7 +785,9 @@ async def maintainer_settings_callback(
                     chat_id=update.effective_chat.id, document=file
                 )
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("buttons.maintainer_settings.backup_logs")
+                text=context.bot_data.persistent_data.get(
+                    "buttons.maintainer_settings.backup_logs"
+                )
             )
         case button if button == context.bot_data.persistent_data.get(
             "buttons.maintainer_settings.listen_to_errors"
@@ -757,7 +797,9 @@ async def maintainer_settings_callback(
                 admin.id, not (admin.flags & localtypes.AdminFlags.LOG_ERRORS)
             )
             await query.edit_message_text(
-                text=context.bot_data.persistent_data.get("text.updated_error_listener_status")
+                text=context.bot_data.persistent_data.get(
+                    "text.updated_error_listener_status"
+                )
                 + str(not (admin.flags & localtypes.AdminFlags.LOG_ERRORS))
             )
             await update_admin_status(context)
@@ -771,7 +813,7 @@ async def maintainer_settings_callback(
         chat_id=update.effective_chat.id,
         text=context.bot_data.persistent_data.get("text.maintainer_settings"),
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.MAINTAINER_SETTINGS
+            localtypes.KeyboardsAliases.MAINTAINER_SETTINGS
         ],
     )
 
@@ -805,7 +847,7 @@ async def return_to_su_settings(
     await update.callback_query.edit_message_text(
         text=context.bot_data.persistent_data.get("text.su_admin_settings"),
         reply_markup=context.bot_data.runtime_data.get("keyboards")[
-            localtypes.Keyboards.SU_ADMIN_SETTINGS
+            localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS
         ],
     )
     return localtypes.AdminState.SU_SETTINGS
@@ -821,6 +863,8 @@ async def return_to_main_menu(
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=context.bot_data.persistent_data.get("text.return_to_main_menu"),
-        reply_markup=context.bot_data.runtime_data.get("keyboards")[localtypes.Keyboards.MAIN_MENU],
+        reply_markup=context.bot_data.runtime_data.get("keyboards")[
+            localtypes.KeyboardsAliases.MAIN_MENU
+        ],
     )
     return localtypes.MainMenuState.MAIN_MENU

@@ -3,7 +3,6 @@ from typing import Final
 import logging.handlers
 import logging
 
-
 from telegram.ext import (
     Application,
     ContextTypes,
@@ -12,6 +11,7 @@ from telegram.ext import (
 
 from bot_utils import setup, custom_context, localtypes
 from bot_utils.database import setup_sqlite_db
+
 
 # Logging config
 file_handler = logging.handlers.RotatingFileHandler(

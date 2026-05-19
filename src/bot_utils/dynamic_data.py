@@ -51,6 +51,6 @@ class SharedDynamicDataClass:
             try:
                 handle = handle[step]
             except KeyError:
-                raise KeyError(f"No key {step} from {key} in SharedDynamicDataClass")
+                raise KeyError(f"No key {step} from {key} in {self.name}")
 
         return handle
