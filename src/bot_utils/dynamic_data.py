@@ -54,3 +54,11 @@ class SharedDynamicDataClass:
                 raise KeyError(f"No key {step} from {key} in {self.name}")
 
         return handle
+
+    def __contains__(self, key):
+        try:
+            self.get(key)
+        except KeyError:
+            return False
+
+        return True

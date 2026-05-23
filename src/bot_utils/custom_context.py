@@ -22,7 +22,7 @@ logger = logging.getLogger("custom_context")
 
 class BotContext:
     def __init__(self):
-        self.reserved_questions = []
+        self.reserved_questions = set()
         self.persistent_data: SharedDynamicDataClass = SharedDynamicDataClass(
             "persistent_bot_data", localtypes.FileNames.DEFAULTS
         )
@@ -30,6 +30,17 @@ class BotContext:
             "runtime_bot_data"
         )
         self.keyboards: Keyboards = Keyboards(self.persistent_data.get("keyboard_data"))
+
+    def get(self, key):
+        if key in self.persistent_data:
+            return self.persistent_data.get(key)
+
+        if key in self.runtime_data:
+            return self.runtime_data.get(key)
+
+        raise ValueError(
+            f"Key not found in either {self.persistent_data.name} or {self.runtime_data.name}"
+        )
 
 
 class ChatContext:
@@ -44,6 +55,8 @@ class ChatContext:
     @dataclass
     class _admin_menu:
         user: Admin | None = None
+        selected_department: str | None = None
+        answering_question: Question | None = None
         skip_questions: List[str] = field(default_factory=list)
 
     @dataclass

@@ -9,3 +9,5 @@ persistence*
 *.bin*
 *.ipynb*
 *.db*
+
+.local*

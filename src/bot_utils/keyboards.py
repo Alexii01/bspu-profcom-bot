@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Keyboards:
     @staticmethod
-    def __generate_inline_keyboard(keys: Dict[str, str]):
+    def generate_inline_keyboard(keys: Dict[str, str]):
         keys = list(keys.items())
         keys = list(keys.items())
         return InlineKeyboardMarkup.from_column(
@@ -34,10 +34,7 @@ class Keyboards:
             ]
         )
 
-    @staticmethod
-    def __generate_inline_keyboard_with_return(
-        keys: Dict[str, str], return_btn: InlineKeyboardButton
-    ):
+    def generate_inline_keyboard_with_return(self, keys: Dict[str, str]):
         keys = list(keys.items())
         return InlineKeyboardMarkup.from_column(
             [
@@ -45,6 +42,7 @@ class Keyboards:
                 for i in range(len(keys))
                 if not keys[i][0].startswith("_")
             ]
+<<<<<<< HEAD
             + [return_btn]
     def __generate_inline_keyboard_with_return(
         keys: Dict[str, str], return_btn: InlineKeyboardButton
@@ -57,17 +55,30 @@ class Keyboards:
                 if not keys[i][0].startswith("_")
             ]
             + [return_btn]
+=======
+            + [self.return_btn]
+        )
+
+    def generate_inline_keyboard_with_data_and_return(self, keys: Dict[str, str]):
+        return InlineKeyboardMarkup.from_column(
+            [
+                InlineKeyboardButton(text=value, callback_data=key)
+                for key, value in keys.items()
+                if not key.startswith("_")
+            ]
+            + [self.return_btn]
+>>>>>>> 430b481 (Naive admin rewrite)
         )
 
     @staticmethod
-    def __generate_reply_keyboard(keys: Dict[str, str]):
+    def generate_reply_keyboard(keys: Dict[str, str]):
         return ReplyKeyboardMarkup.from_column(
             [value for key, value in keys.items() if not key.startswith("_")],
             one_time_keyboard=True,
         )
 
     @staticmethod
-    def __generate_inline_keyboard_with_data(keys: Dict[str, str]):
+    def generate_inline_keyboard_with_data(keys: Dict[str, str]):
         return InlineKeyboardMarkup.from_column(
             [
                 InlineKeyboardButton(text=value, callback_data=key)
@@ -83,17 +94,17 @@ class Keyboards:
             return
 
         if keyboard_data["_meta"] & localtypes.KeyboardFlag.IS_REPLY:
-            self.__keyboards[name] = Keyboards.__generate_reply_keyboard(keyboard_data)
+            self.__keyboards[name] = Keyboards.generate_reply_keyboard(keyboard_data)
             return
             return
 
         if keyboard_data["_meta"] & localtypes.KeyboardFlag.WITH_RETURN:
-            self.__keyboards[name] = Keyboards.__generate_inline_keyboard_with_return(
+            self.__keyboards[name] = Keyboards.generate_inline_keyboard_with_return(
                 keyboard_data, self.return_btn
                 keyboard_data, self.return_btn
             )
         else:
-            self.__keyboards[name] = Keyboards.__generate_inline_keyboard(keyboard_data)
+            self.__keyboards[name] = Keyboards.generate_inline_keyboard(keyboard_data)
 
     def __init__(self, keyboards_data: dict):
         self.__keyboards_data = keyboards_data
@@ -144,7 +155,7 @@ class Keyboards:
 
         keys = defaults + opt
 
-        return Keyboards.__generate_inline_keyboard(keys)
+        return Keyboards.generate_inline_keyboard(keys)
 
     def user_messages(self, questions: List[db_models.Question]):
         return InlineKeyboardMarkup.from_column(
@@ -171,8 +182,12 @@ class Keyboards:
         )
 
     def departments(self, departments: Dict[str, str]):
+<<<<<<< HEAD
         return Keyboards.__generate_inline_keyboard_with_data(departments)
 
 
     def departments(self, departments: Dict[str, str]):
         return Keyboards.__generate_inline_keyboard_with_data(departments)
+=======
+        return Keyboards.generate_inline_keyboard_with_data(departments)
+>>>>>>> 430b481 (Naive admin rewrite)
