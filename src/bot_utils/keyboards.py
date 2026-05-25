@@ -87,7 +87,7 @@ class Keyboards:
             ]
         )
 
-    def __generate_keyboard(self, name: str, keyboard_data: dict):
+    def __generate_keyboard(self, name: str, keyboard_data: Dict[str, str]):
         if ("_meta" not in keyboard_data) or (name in self.__keyboards):
     def __generate_keyboard(self, name: str, keyboard_data: dict):
         if ("_meta" not in keyboard_data) or (name in self.__keyboards):
@@ -99,9 +99,14 @@ class Keyboards:
             return
 
         if keyboard_data["_meta"] & localtypes.KeyboardFlag.WITH_RETURN:
+<<<<<<< HEAD
             self.__keyboards[name] = Keyboards.generate_inline_keyboard_with_return(
                 keyboard_data, self.return_btn
                 keyboard_data, self.return_btn
+=======
+            self.__keyboards[name] = self.generate_inline_keyboard_with_return(
+                keyboard_data
+>>>>>>> cb011e7 (Admin working)
             )
         else:
             self.__keyboards[name] = Keyboards.generate_inline_keyboard(keyboard_data)
@@ -153,7 +158,7 @@ class Keyboards:
             opt.pop("su", None)
             opt.pop("su", None)
 
-        keys = defaults + opt
+        keys = defaults | opt
 
         return Keyboards.generate_inline_keyboard(keys)
 

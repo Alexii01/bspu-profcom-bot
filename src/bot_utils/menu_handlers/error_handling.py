@@ -18,7 +18,7 @@ class BotContextEncoder(JSONEncoder):
     def default(self, obj):
         if isinstance(obj, custom_context.BotContext):
             return {
-                "reserved_questions": obj.reserved_questions,
+                "reserved_questions": list(obj.reserved_questions),
                 "persistent_data": obj.persistent_data.data,
                 "runtime_data": obj.runtime_data.data,
             }

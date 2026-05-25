@@ -25,7 +25,7 @@ async def update_admin_status(context: CustomContext):
 
 # TODO: Use this function wherever it is appropriate
 async def fail_if_admin_no_longer_exists(context: CustomContext):
-    if not await database.admin_exists(context.chat_data.admin_menu.user):
+    if not await database.admin_exists(context.chat_data.admin_menu.user.id):
         admin_no_longer_exists_error()
 
 
@@ -110,7 +110,7 @@ async def answer_another_question_via_query(
         await context.edit_last_msg(lookup="text.admin_select_department_pls")
         await context.new_msg(
             lookup="text.successful_login",
-            keyboard=context.bot_data.keyboards.admin_main_menu(
+            reply_markup=context.bot_data.keyboards.admin_main_menu(
                 context.chat_data.admin_menu.user.flags
             ),
         )
@@ -155,7 +155,7 @@ async def answer_another_question_via_query(
 async def reply_to_question(context: CustomContext, text: str):
     await context.bot.send_message(
         chat_id=context.admin_menu.answering_question.user_id,
-        text=f"Ответил(а): {context.chat_data[localtypes.BotMemory.LOGGED_IN_AS].public_name}\n{text}",
+        text=f"Ответил(а): {context.chat_data.admin_menu.user.public_name}\n{text}",
         parse_mode=ParseMode.HTML,
     )
 
@@ -220,7 +220,9 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
         case button if button == "buttons.admin_answer_menu.redirect":
             await context.edit_last_msg(
                 lookup="text.admin_select_department_to_redirect",
-                keyboard=localtypes.KeyboardsAliases.DEPARTMENTS,
+                reply_markup=context.bot_data.keyboards.departments(
+                    context.bot_data.get("departments")
+                ),
             )
             return localtypes.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT
         case button if button == "buttons.admin_answer_menu.send_faq":
@@ -340,7 +342,7 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
     if int(query.data) == localtypes.GO_BACK_CODE:
         await context.edit_last_msg(
             lookup="text.successful_login",
-            keyboard=context.bot_data.keyboards.generate_admin_main_menu(
+            keyboard=context.bot_data.keyboards.admin_main_menu(
                 context.chat_data.admin_menu.user.flags
             ),
         )
@@ -348,7 +350,8 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
 
     match context.last_keyboard_buttons_by_index(int(query.data)):
         case button if button == "logout":
-            await context.next_msg(
+            await context.delete_last_msg()
+            await context.new_msg(
                 lookup="text.return_to_main_menu",
                 keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
             )
@@ -364,10 +367,16 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
                 text=context.bot_data.persistent_data.get(
                     "text.admin_select_departments"
                 )
-                + context.chat_data.get(
-                    localtypes.BotMemory.ADMIN_SELECTED_DEPARTMENT, (None, "не выбран")
-                )[1],
-                keyboard=localtypes.KeyboardsAliases.DEPARTMENTS,
+                + (
+                    context.bot_data.persistent_data.get(
+                        f"departments.{context.chat_data.admin_menu.selected_department}"
+                    )
+                    if context.chat_data.admin_menu.selected_department
+                    else context.bot_data.get("text.department_not_selected")
+                ),
+                reply_markup=context.bot_data.keyboards.departments(
+                    context.bot_data.get("departments")
+                ),
             )
             return localtypes.AdminState.SELECTING_DEPARTMENT
         case button if button == "help":
@@ -417,7 +426,7 @@ async def select_department(update: Update, context: CustomContext) -> int:
 
     await context.edit_last_msg(
         lookup="text.admin_settings",
-        reply_markup=localtypes.KeyboardsAliases.ADMIN_SETTINGS,
+        keyboard=localtypes.KeyboardsAliases.ADMIN_SETTINGS,
     )
     return localtypes.AdminState.SETTINGS
 
@@ -601,9 +610,9 @@ async def maintainer_settings_callback(update: Update, context: CustomContext) -
     await fail_if_admin_no_longer_exists(context)
 
     if int(query.data) == localtypes.GO_BACK_CODE:
-        await query.edit_message_text(
+        await context.edit_last_msg(
             lookup="text.successful_login",
-            reply_markup=context.bot_data.keyboards.admin_main_menu(
+            keyboard=context.bot_data.keyboards.admin_main_menu(
                 context.chat_data.admin_menu.user.flags
             ),
         )
@@ -625,7 +634,7 @@ async def maintainer_settings_callback(update: Update, context: CustomContext) -
                 lookup="buttons.maintainer_settings.backup_logs"
             )
         case button if button == "listen_to_errors":
-            admin = context.admin_menu.user
+            admin = context.chat_data.admin_menu.user
             await database.update_error_listening_status(
                 admin.id, not (admin.flags & localtypes.AdminFlags.LOG_ERRORS)
             )

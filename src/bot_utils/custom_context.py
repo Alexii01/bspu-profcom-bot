@@ -2,7 +2,12 @@ from dataclasses import dataclass, field
 from typing import List
 import logging
 
-from telegram import InlineKeyboardMarkup, Message, ReplyKeyboardMarkup
+from telegram import (
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
 from telegram.constants import ParseMode
 from telegram.ext import (
     CallbackContext,
@@ -48,7 +53,8 @@ class ChatContext:
 
     def __init__(self):
         self.last_message: Message | None = None
-        self.last_keyboard: str | localtypes.KeyboardsAliases | None = None
+        self.last_keyboard: InlineKeyboardMarkup | ReplyKeyboardMarkup | None = None
+        self.last_keyboard_name: str | None = None
         self.admin_menu = self._admin_menu()
         self.question_menu = self._question_menu()
 
@@ -66,15 +72,28 @@ class ChatContext:
         asked_questions: List[Question] = field(default_factory=list)
 
     async def clear_keyboard(self):
-        if self.last_message and self.last_message.reply_markup is not None:
+        if self.last_message is None:
+            return
+
+        if isinstance(self.last_keyboard, InlineKeyboardMarkup):
             text = self.last_message.text_html
             await self.last_message.edit_text(text[:-1], reply_markup=None)
             await self.last_message.edit_text(text, parse_mode=ParseMode.HTML)
             self.last_keyboard = None
+            self.last_keyboard_name = None
+
+        if isinstance(self.last_keyboard, ReplyKeyboardMarkup):
+            tmp = await self.last_message.reply_text(
+                text="...", reply_markup=ReplyKeyboardRemove()
+            )
+            self.last_keyboard = None
+            self.last_keyboard_name = None
+            await tmp.delete()
 
     def drop_last_msg(self):
-        del self.last_message
-        del self.last_keyboard
+        self.last_message = None
+        self.last_keyboard = None
+        self.last_keyboard_name = None
 
 
 class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
@@ -114,43 +133,61 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         return keyboard
 
     def last_keyboard_buttons_by_index(self, index: int) -> str:
-        return self.bot_data.keyboards.get_key_name(self.chat_data.last_keyboard, index)
+        if self.chat_data.last_keyboard_name is not None:
+            return self.bot_data.keyboards.get_key_name(
+                self.chat_data.last_keyboard_name, index
+            )
+        elif self.chat_data.last_keyboard is not None:
+            logger.error(
+                f"{self.chat_data.last_keyboard.inline_keyboard[0][index].text}"
+            )
+            return self.chat_data.last_keyboard.inline_keyboard[0][index].text
+        else:
+            raise UnboundLocalError(
+                "Somehow a message contains no keyboard, but a keyboard was expected"
+            )
 
     def last_keyboard_buttons_by_name(self, name: str) -> str:
         return self.bot_data.keyboards.get_key_by_name(
-            self.chat_data.last_keyboard, name
+            self.chat_data.last_keyboard_name, name
         )
+
+    def __set_last_keyboard(
+        self, name: str, keyboard: InlineKeyboardMarkup | ReplyKeyboardMarkup
+    ):
+        """Assuming `name` is the name to `keyboard`, save them in chat_data"""
+        self.chat_data.last_keyboard_name = name if isinstance(name, str) else None
+        self.chat_data.last_keyboard = keyboard
 
     async def __send_msg(
         self,
-        text: str,
-        lookup: str,
-        keyboard: localtypes.KeyboardsAliases
-        | str
-        | ReplyKeyboardMarkup
-        | InlineKeyboardMarkup = None,
+        text: str = None,
+        lookup: str = None,
+        keyboard: localtypes.KeyboardsAliases | str = None,
         *args,
         **kwargs,
     ) -> Message:
         try:
+            kbd = (
+                self.resolve_keyboard(keyboard)
+                if keyboard is not None
+                else kwargs.pop("reply_markup", None)
+            )
             return await self.bot.send_message(
                 chat_id=self._chat_id,
                 text=text if text else self.bot_data.persistent_data.get(lookup),
-                reply_markup=self.resolve_keyboard(keyboard),
+                reply_markup=kbd,
                 *args,
                 **kwargs,
             )
         finally:
-            self.chat_data.last_keyboard = keyboard
+            self.__set_last_keyboard(str(keyboard), kbd)
 
     async def new_msg(
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases
-        | str
-        | ReplyKeyboardMarkup
-        | InlineKeyboardMarkup = None,
+        keyboard: localtypes.KeyboardsAliases | str | ReplyKeyboardMarkup = None,
         *args,
         **kwargs,
     ):
@@ -168,30 +205,33 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases
-        | str
-        | ReplyKeyboardMarkup
-        | InlineKeyboardMarkup
-        | None = None,
+        keyboard: localtypes.KeyboardsAliases | str | None = None,
         *args,
         **kwargs,
     ):
         """Edits last message or clears keyboard if called with no args"""
 
         try:
+            await self.clear_keyboard()
             if text is None and lookup is None:
                 msg_text = self.chat_data.last_message.text
             else:
                 msg_text = text if text else self.bot_data.persistent_data.get(lookup)
 
+            kbd = (
+                self.resolve_keyboard(keyboard)
+                if keyboard is not None
+                else kwargs.pop("reply_markup", None)
+            )
+
             self.chat_data.last_message = await self.chat_data.last_message.edit_text(
                 text=msg_text,
-                reply_markup=self.resolve_keyboard(keyboard),
+                reply_markup=kbd,
                 *args,
                 **kwargs,
             )
         finally:
-            self.chat_data.last_keyboard = keyboard
+            self.__set_last_keyboard(str(keyboard), kbd)
 
     async def clear_keyboard(self):
         await self.chat_data.clear_keyboard()
@@ -200,10 +240,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases
-        | str
-        | ReplyKeyboardMarkup
-        | InlineKeyboardMarkup = None,
+        keyboard: localtypes.KeyboardsAliases | str = None,
         *args,
         **kwargs,
     ):
@@ -223,3 +260,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
                 *args,
                 **kwargs,
             )
+
+    async def delete_last_msg(self):
+        await self.chat_data.last_message.delete()
+        self.chat_data.drop_last_msg()
