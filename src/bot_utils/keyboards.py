@@ -1,5 +1,4 @@
 from typing import List, Dict
-from typing import List, Dict
 import logging
 
 from telegram import (
@@ -15,18 +14,12 @@ from bot_utils import localtypes
 logger = logging.getLogger(__name__)
 
 
-
 class Keyboards:
     @staticmethod
     def generate_inline_keyboard(keys: Dict[str, str]):
         keys = list(keys.items())
         keys = list(keys.items())
         return InlineKeyboardMarkup.from_column(
-            [
-                InlineKeyboardButton(text=keys[i][1], callback_data=i)
-                for i in range(len(keys))
-                if not keys[i][0].startswith("_")
-            ]
             [
                 InlineKeyboardButton(text=keys[i][1], callback_data=i)
                 for i in range(len(keys))
@@ -42,20 +35,6 @@ class Keyboards:
                 for i in range(len(keys))
                 if not keys[i][0].startswith("_")
             ]
-<<<<<<< HEAD
-            + [return_btn]
-    def __generate_inline_keyboard_with_return(
-        keys: Dict[str, str], return_btn: InlineKeyboardButton
-    ):
-        keys = list(keys.items())
-        return InlineKeyboardMarkup.from_column(
-            [
-                InlineKeyboardButton(text=keys[i][1], callback_data=i)
-                for i in range(len(keys))
-                if not keys[i][0].startswith("_")
-            ]
-            + [return_btn]
-=======
             + [self.return_btn]
         )
 
@@ -67,7 +46,6 @@ class Keyboards:
                 if not key.startswith("_")
             ]
             + [self.return_btn]
->>>>>>> 430b481 (Naive admin rewrite)
         )
 
     @staticmethod
@@ -87,8 +65,6 @@ class Keyboards:
             ]
         )
 
-    def __generate_keyboard(self, name: str, keyboard_data: Dict[str, str]):
-        if ("_meta" not in keyboard_data) or (name in self.__keyboards):
     def __generate_keyboard(self, name: str, keyboard_data: dict):
         if ("_meta" not in keyboard_data) or (name in self.__keyboards):
             return
@@ -99,14 +75,8 @@ class Keyboards:
             return
 
         if keyboard_data["_meta"] & localtypes.KeyboardFlag.WITH_RETURN:
-<<<<<<< HEAD
-            self.__keyboards[name] = Keyboards.generate_inline_keyboard_with_return(
-                keyboard_data, self.return_btn
-                keyboard_data, self.return_btn
-=======
             self.__keyboards[name] = self.generate_inline_keyboard_with_return(
                 keyboard_data
->>>>>>> cb011e7 (Admin working)
             )
         else:
             self.__keyboards[name] = Keyboards.generate_inline_keyboard(keyboard_data)
@@ -128,14 +98,6 @@ class Keyboards:
         for name, data in keyboards_data.items():
             self.__generate_keyboard(name, data)
 
-    def get(self, name: str):
-        return self.__keyboards[name]
-
-    def get_key_name(self, kbd_name: str, index: int):
-        return list(self.__keyboards_data[kbd_name])[index]
-
-    def get_key_by_name(self, kbd_name: str, key_name: str):
-        return self.__keyboards_data[kbd_name][key_name]
     def get(self, name: str):
         return self.__keyboards[name]
 
@@ -174,25 +136,7 @@ class Keyboards:
                 for question in questions
             ]
             + [self.return_btn]
-            [
-                InlineKeyboardButton(
-                    text=" ".join(question.message.split()[:5])
-                    .encode("utf-8")[: tc.InlineKeyboardButtonLimit.MAX_COPY_TEXT]
-                    .decode("utf-8", "ignore"),
-                    callback_data=str(question.id),
-                )
-                for question in questions
-            ]
-            + [self.return_btn]
         )
 
     def departments(self, departments: Dict[str, str]):
-<<<<<<< HEAD
-        return Keyboards.__generate_inline_keyboard_with_data(departments)
-
-
-    def departments(self, departments: Dict[str, str]):
-        return Keyboards.__generate_inline_keyboard_with_data(departments)
-=======
         return Keyboards.generate_inline_keyboard_with_data(departments)
->>>>>>> 430b481 (Naive admin rewrite)
