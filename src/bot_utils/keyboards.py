@@ -18,7 +18,6 @@ class Keyboards:
     @staticmethod
     def generate_inline_keyboard(keys: Dict[str, str]):
         keys = list(keys.items())
-        keys = list(keys.items())
         return InlineKeyboardMarkup.from_column(
             [
                 InlineKeyboardButton(text=keys[i][1], callback_data=i)
