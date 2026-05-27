@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: CustomContext) -> int:
     """Initiates the beginning of conversation for a regular user"""
     logging.debug("%d: Started convo with user", update.effective_user.id)
-
     await context.new_msg(
         lookup="text.first_bot_message",
         keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
@@ -75,6 +74,7 @@ async def fallback(update: Update, context: CustomContext) -> int:
 async def return_to_main_menu(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     await context.clear_keyboard()
+
     await context.new_msg(
         lookup="text.return_to_main_menu",
         keyboard=localtypes.KeyboardsAliases.MAIN_MENU,

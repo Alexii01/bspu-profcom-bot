@@ -224,6 +224,11 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
                 else kwargs.pop("reply_markup", None)
             )
 
+            if self.chat_data.last_keyboard and (
+                type(self.chat_data.last_keyboard) is not type(kbd)
+            ):
+                self.clear_keyboard()
+
             self.chat_data.last_message = await self.chat_data.last_message.edit_text(
                 text=msg_text,
                 reply_markup=kbd,
