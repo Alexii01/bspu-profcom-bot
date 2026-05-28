@@ -212,7 +212,6 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         """Edits last message or clears keyboard if called with no args"""
 
         try:
-            await self.clear_keyboard()
             if text is None and lookup is None:
                 msg_text = self.chat_data.last_message.text
             else:
@@ -223,6 +222,12 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
                 if keyboard is not None
                 else kwargs.pop("reply_markup", None)
             )
+
+            if (
+                self.chat_data.last_message.text == msg_text
+                and self.chat_data.last_keyboard == kbd
+            ):
+                return
 
             if self.chat_data.last_keyboard and (
                 type(self.chat_data.last_keyboard) is not type(kbd)
