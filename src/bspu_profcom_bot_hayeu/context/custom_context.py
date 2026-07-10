@@ -14,12 +14,12 @@ from telegram.ext import (
     ExtBot,
 )
 
-from bot_utils import database
 
-from bot_utils.dynamic_data import SharedDynamicDataClass
-from bot_utils.keyboards import Keyboards
-from bot_utils.db_models import Admin, Question
-from bot_utils import localtypes
+from bspu_profcom_bot_hayeu.loaders.dynamic_data import SharedDynamicDataClass
+from bspu_profcom_bot_hayeu.loaders.keyboards import Keyboards
+from bspu_profcom_bot_hayeu.db.models import Admin, Question
+from bspu_profcom_bot_hayeu.db import database
+from bspu_profcom_bot_hayeu import old_states
 
 
 logger = logging.getLogger("custom_context")
@@ -29,7 +29,7 @@ class BotContext:
     def __init__(self):
         self.reserved_questions = set()
         self.persistent_data: SharedDynamicDataClass = SharedDynamicDataClass(
-            "persistent_bot_data", localtypes.FileNames.DEFAULTS
+            "persistent_bot_data", old_states.FileNames.DEFAULTS
         )
         self.runtime_data: SharedDynamicDataClass = SharedDynamicDataClass(
             "runtime_bot_data"
@@ -120,12 +120,12 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
 
     def resolve_keyboard(
         self,
-        keyboard: localtypes.KeyboardsAliases
+        keyboard: old_states.KeyboardsAliases
         | str
         | InlineKeyboardMarkup
         | ReplyKeyboardMarkup,
     ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
-        if isinstance(keyboard, localtypes.KeyboardsAliases):
+        if isinstance(keyboard, old_states.KeyboardsAliases):
             return self.bot_data.keyboards.get(str(keyboard))
         if isinstance(keyboard, str):
             return self.bot_data.keyboards.get(keyboard)
@@ -163,7 +163,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases | str = None,
+        keyboard: old_states.KeyboardsAliases | str = None,
         *args,
         **kwargs,
     ) -> Message:
@@ -187,7 +187,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases | str | ReplyKeyboardMarkup = None,
+        keyboard: old_states.KeyboardsAliases | str | ReplyKeyboardMarkup = None,
         *args,
         **kwargs,
     ):
@@ -205,7 +205,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases | str | None = None,
+        keyboard: old_states.KeyboardsAliases | str | None = None,
         *args,
         **kwargs,
     ):
@@ -227,6 +227,9 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
                 self.chat_data.last_message.text == msg_text
                 and self.chat_data.last_keyboard == kbd
             ):
+                logger.warning(
+                    f"Updating message to be the same. text: '{text}', keyboard: {kbd}"
+                )
                 return
 
             if self.chat_data.last_keyboard and (
@@ -250,7 +253,7 @@ class CustomContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
         self,
         text: str = None,
         lookup: str = None,
-        keyboard: localtypes.KeyboardsAliases | str = None,
+        keyboard: old_states.KeyboardsAliases | str = None,
         *args,
         **kwargs,
     ):

@@ -10,8 +10,9 @@ from json import JSONEncoder
 from telegram.constants import ParseMode, MessageLimit
 from telegram import Update
 
-from bot_utils import database, localtypes
-from bot_utils import custom_context
+from bspu_profcom_bot_hayeu.db import database
+from bspu_profcom_bot_hayeu.context import custom_context
+from bspu_profcom_bot_hayeu import old_states
 
 
 class BotContextEncoder(JSONEncoder):
@@ -95,7 +96,7 @@ async def log_and_recover(
     # (Do first to avoid leaving user in a bad state)
     await context.edit_last_msg(
         lookup="text.sorry_error",
-        keyboard=localtypes.KeyboardsAliases.GO_BACK,
+        keyboard=old_states.KeyboardsAliases.GO_BACK,
     )
 
     # LOGGING TO DEVELOPER
@@ -156,7 +157,7 @@ async def log_and_recover(
 
     # Sending data to dev over telegram
     devs = await database.select_maintainers_ids_with_flags(
-        localtypes.AdminFlags.LOG_ERRORS
+        old_states.AdminFlags.LOG_ERRORS
     )
 
     for dev in devs:

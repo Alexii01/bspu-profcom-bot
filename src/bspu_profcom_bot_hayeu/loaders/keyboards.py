@@ -8,8 +8,8 @@ from telegram import (
 )
 import telegram.constants as tc
 
-from bot_utils import db_models
-from bot_utils import localtypes
+from bspu_profcom_bot_hayeu.db import models
+from bspu_profcom_bot_hayeu import old_states
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +68,12 @@ class Keyboards:
         if ("_meta" not in keyboard_data) or (name in self.__keyboards):
             return
 
-        if keyboard_data["_meta"] & localtypes.KeyboardFlag.IS_REPLY:
+        if keyboard_data["_meta"] & old_states.KeyboardFlag.IS_REPLY:
             self.__keyboards[name] = Keyboards.generate_reply_keyboard(keyboard_data)
             return
             return
 
-        if keyboard_data["_meta"] & localtypes.KeyboardFlag.WITH_RETURN:
+        if keyboard_data["_meta"] & old_states.KeyboardFlag.WITH_RETURN:
             self.__keyboards[name] = self.generate_inline_keyboard_with_return(
                 keyboard_data
             )
@@ -86,12 +86,12 @@ class Keyboards:
 
         self.return_btn = InlineKeyboardButton(
             text=self.__keyboards_data["buttons"]["go_back"],
-            callback_data=localtypes.GO_BACK_CODE,
+            callback_data=old_states.GO_BACK_CODE,
         )
 
         self.return_btn = InlineKeyboardButton(
             text=self.__keyboards_data["buttons"]["go_back"],
-            callback_data=localtypes.GO_BACK_CODE,
+            callback_data=old_states.GO_BACK_CODE,
         )
 
         for name, data in keyboards_data.items():
@@ -106,16 +106,16 @@ class Keyboards:
     def get_key_by_name(self, kbd_name: str, key_name: str):
         return self.__keyboards_data[kbd_name][key_name]
 
-    def admin_main_menu(self, admin_type: localtypes.AdminFlags):
+    def admin_main_menu(self, admin_type: old_states.AdminFlags):
         defaults: Dict = self.__keyboards_data["admin_menu"]
         opt: Dict = self.__keyboards_data["optional_settings"]
         defaults: Dict = self.__keyboards_data["admin_menu"]
         opt: Dict = self.__keyboards_data["optional_settings"]
 
-        if not admin_type & localtypes.AdminFlags.IS_MAINTAINER:
+        if not admin_type & old_states.AdminFlags.IS_MAINTAINER:
             opt.pop("maintiner", None)
             opt.pop("maintiner", None)
-        if not admin_type & localtypes.AdminFlags.IS_SUPER:
+        if not admin_type & old_states.AdminFlags.IS_SUPER:
             opt.pop("su", None)
             opt.pop("su", None)
 
@@ -123,7 +123,7 @@ class Keyboards:
 
         return Keyboards.generate_inline_keyboard(keys)
 
-    def user_messages(self, questions: List[db_models.Question]):
+    def user_messages(self, questions: List[models.Question]):
         return InlineKeyboardMarkup.from_column(
             [
                 InlineKeyboardButton(

@@ -4,9 +4,10 @@ from telegram import Update
 
 from telegram.constants import ParseMode
 
-from bot_utils import database, models, localtypes
-from bot_utils.custom_context import CustomContext
-from bot_utils.menu_handlers import error_handling
+from bspu_profcom_bot_hayeu.db import database
+from bspu_profcom_bot_hayeu.context.custom_context import CustomContext
+from bspu_profcom_bot_hayeu.actions import error_handling
+from bspu_profcom_bot_hayeu import models, old_states
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def cleanup_on_error(context: CustomContext):
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -47,16 +48,16 @@ async def init_login(update: Update, context: CustomContext) -> int:
             lookup="text.successful_login",
             keyboard=context.bot_data.keyboards.admin_main_menu(result.flags),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
     await update.message.reply_text(
         text=context.bot_data.persistent_data.get("text.admin_login")
     )
-    return localtypes.AdminState.LOGIN
+    return old_states.AdminState.LOGIN
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -68,17 +69,17 @@ async def login(update: Update, context: CustomContext) -> int:
         await update.message.reply_text(
             text=context.bot_data.persistent_data.get("text.return_to_main_menu"),
             reply_markup=context.bot_data.runtime_data.get("keyboards")[
-                localtypes.KeyboardsAliases.MAIN_MENU
+                old_states.KeyboardsAliases.MAIN_MENU
             ],
         )
-        return localtypes.MainMenuState.MAIN_MENU
+        return old_states.MainMenuState.MAIN_MENU
     else:
-        context.chat_data[localtypes.BotMemory.LOGGED_IN_AS] = result
+        context.chat_data[old_states.BotMemory.LOGGED_IN_AS] = result
         await update.message.reply_text(
             text=context.bot_data.persistent_data.get("text.first_login"),
             reply_markup=context.bot_data.keyboards.admin_main_menu(result.flags),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
 
 async def output_question_to_answer_via_query(context: CustomContext):
@@ -87,7 +88,7 @@ async def output_question_to_answer_via_query(context: CustomContext):
         + "\n\n"
         + context.bot_data.persistent_data.get("text.review_question_pls"),
         parse_mode=ParseMode.MARKDOWN_V2,
-        keyboard=localtypes.KeyboardsAliases.ADMIN_ANSWER_MENU,
+        keyboard=old_states.KeyboardsAliases.ADMIN_ANSWER_MENU,
     )
 
 
@@ -97,7 +98,7 @@ async def output_question_to_answer_via_update(question, context: CustomContext)
         + "\n\n"
         + context.bot_data.persistent_data.get("text.review_question_pls"),
         parse_mode=ParseMode.MARKDOWN_V2,
-        reply_markup=localtypes.KeyboardsAliases.ADMIN_ANSWER_MENU,
+        reply_markup=old_states.KeyboardsAliases.ADMIN_ANSWER_MENU,
     )
 
 
@@ -114,7 +115,7 @@ async def answer_another_question_via_query(
                 context.chat_data.admin_menu.user.flags
             ),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
     if not context.chat_data.admin_menu.skip_questions:
         question = await database.select_oldest_question_from_department(
@@ -128,7 +129,7 @@ async def answer_another_question_via_query(
                     context.chat_data.admin_menu.user.flags
                 ),
             )
-            return localtypes.AdminState.MAIN_MENU
+            return old_states.AdminState.MAIN_MENU
     else:
         question = await database.select_oldest_question_from_department_but_not_ids(
             context.chat_data.admin_menu.selected_department,
@@ -142,14 +143,14 @@ async def answer_another_question_via_query(
         context.chat_data.admin_menu.answering_question
         and context.chat_data.admin_menu.answering_question.id == question.id
     ):
-        return localtypes.AdminState.ANSWERING_QUESTIONS
+        return old_states.AdminState.ANSWERING_QUESTIONS
 
     context.chat_data.admin_menu.answering_question = question
     context.bot_data.reserved_questions.add(question.id)
 
     await output_question_to_answer_via_query(context)
 
-    return localtypes.AdminState.ANSWERING_QUESTIONS
+    return old_states.AdminState.ANSWERING_QUESTIONS
 
 
 async def reply_to_question(context: CustomContext, text: str):
@@ -161,7 +162,7 @@ async def reply_to_question(context: CustomContext, text: str):
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -177,26 +178,26 @@ async def main_menu_callback(update: Update, context: CustomContext) -> int:
         case 1:  # Settings
             await context.edit_last_msg(
                 lookup="text.admin_settings",
-                keyboard=localtypes.KeyboardsAliases.ADMIN_SETTINGS,
+                keyboard=old_states.KeyboardsAliases.ADMIN_SETTINGS,
             )
-            return localtypes.AdminState.SETTINGS
+            return old_states.AdminState.SETTINGS
         case 2:  # Superuser settings
             await context.edit_last_msg(
                 lookup="text.admin_settings",
-                keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+                keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
             )
-            return localtypes.AdminState.SU_SETTINGS
+            return old_states.AdminState.SU_SETTINGS
         case 3:  # Maintainer settings
             await context.edit_last_msg(
                 lookup="text.admin_settings",
-                keyboard=localtypes.KeyboardsAliases.MAINTAINER_SETTINGS,
+                keyboard=old_states.KeyboardsAliases.MAINTAINER_SETTINGS,
             )
-            return localtypes.AdminState.MAINTAINER_SETTINGS
-    return localtypes.MainMenuState.ERROR_ENCOUNTERED
+            return old_states.AdminState.MAINTAINER_SETTINGS
+    return old_states.MainMenuState.ERROR_ENCOUNTERED
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -206,7 +207,7 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
 
     await fail_if_admin_no_longer_exists(context)
 
-    if int(query.data) == localtypes.GO_BACK_CODE:
+    if int(query.data) == old_states.GO_BACK_CODE:
         cleanup_on_error(context)
         await context.edit_last_msg(
             lookup="text.successful_login",
@@ -214,7 +215,7 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
                 context.chat_data.admin_menu.user.flags
             ),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
     match context.last_keyboard_buttons_by_index(int(query.data)):
         case button if button == "buttons.admin_answer_menu.redirect":
@@ -224,7 +225,7 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
                     context.bot_data.get("departments")
                 ),
             )
-            return localtypes.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT
+            return old_states.AdminState.SELECTING_DEPARTMENT_TO_REDIRECT
         case button if button == "buttons.admin_answer_menu.send_faq":
             await reply_to_question(
                 context,
@@ -238,9 +239,9 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
         case button if button == "buttons.admin_answer_menu.discard":
             await context.edit_last_msg(
                 lookup="text.confirm_question_deletion",
-                keyboard=localtypes.KeyboardsAliases.CONFIRM,
+                keyboard=old_states.KeyboardsAliases.CONFIRM,
             )
-            return localtypes.AdminState.CONFIRMING_QUESTION_DELETION
+            return old_states.AdminState.CONFIRMING_QUESTION_DELETION
         case button if button == "buttons.admin_answer_menu.skip":
             context.bot_data.reserved_questions.discard(
                 context.chat_data.admin_menu.answering_question.id
@@ -253,7 +254,7 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -265,9 +266,9 @@ async def confirm_question_deletion_callback(
 
     await fail_if_admin_no_longer_exists(context)
 
-    if int(query.data) == localtypes.GO_BACK_CODE:
+    if int(query.data) == old_states.GO_BACK_CODE:
         await output_question_to_answer_via_query(context)
-        return localtypes.AdminState.ANSWERING_QUESTIONS
+        return old_states.AdminState.ANSWERING_QUESTIONS
 
     await database.delete_question_by_id(
         context.chat_data.admin_menu.answering_question.id
@@ -280,7 +281,7 @@ async def confirm_question_deletion_callback(
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -295,7 +296,7 @@ async def redirect_to_department_callback(
     try:
         int(query.data)
         await output_question_to_answer_via_query(context)
-        return localtypes.AdminState.ANSWERING_QUESTIONS
+        return old_states.AdminState.ANSWERING_QUESTIONS
     except ValueError:
         await database.update_question_department_with_id(
             query.data,
@@ -306,7 +307,7 @@ async def redirect_to_department_callback(
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -325,11 +326,11 @@ async def answering_menu_reply(update: Update, context: CustomContext) -> int:
         ),
     )
 
-    return localtypes.AdminState.MAIN_MENU
+    return old_states.AdminState.MAIN_MENU
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -339,29 +340,29 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
 
     await fail_if_admin_no_longer_exists(context)
 
-    if int(query.data) == localtypes.GO_BACK_CODE:
+    if int(query.data) == old_states.GO_BACK_CODE:
         await context.edit_last_msg(
             lookup="text.successful_login",
             keyboard=context.bot_data.keyboards.admin_main_menu(
                 context.chat_data.admin_menu.user.flags
             ),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
     match context.last_keyboard_buttons_by_index(int(query.data)):
         case button if button == "logout":
             await context.delete_last_msg()
             await context.new_msg(
                 lookup="text.return_to_main_menu",
-                keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
+                keyboard=old_states.KeyboardsAliases.MAIN_MENU,
             )
-            return localtypes.MainMenuState.MAIN_MENU
+            return old_states.MainMenuState.MAIN_MENU
         case button if button == "select_name":
             await context.edit_last_msg(
                 text=context.bot_data.persistent_data.get("text.awaiting_admin_name")
                 + context.chat_data.admin_menu.user.public_name
             )
-            return localtypes.AdminState.ENTERING_NAME
+            return old_states.AdminState.ENTERING_NAME
         case button if button == "select_department":
             await context.edit_last_msg(
                 text=context.bot_data.persistent_data.get(
@@ -378,21 +379,21 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
                     context.bot_data.get("departments")
                 ),
             )
-            return localtypes.AdminState.SELECTING_DEPARTMENT
+            return old_states.AdminState.SELECTING_DEPARTMENT
         case button if button == "help":
             await context.edit_last_msg(
                 lookup="text.admin_instructions",
             )
             await context.new_msg(
                 lookup="text.admin_settings",
-                keyboard=localtypes.KeyboardsAliases.ADMIN_SETTINGS,
+                keyboard=old_states.KeyboardsAliases.ADMIN_SETTINGS,
             )
 
-            return localtypes.AdminState.SETTINGS
+            return old_states.AdminState.SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -403,13 +404,13 @@ async def update_name(update: Update, context: CustomContext) -> int:
     )
     await context.new_msg(
         lookup="text.admin_settings",
-        keyboard=localtypes.KeyboardsAliases.ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.ADMIN_SETTINGS,
     )
-    return localtypes.AdminState.SETTINGS
+    return old_states.AdminState.SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -426,13 +427,13 @@ async def select_department(update: Update, context: CustomContext) -> int:
 
     await context.edit_last_msg(
         lookup="text.admin_settings",
-        keyboard=localtypes.KeyboardsAliases.ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.ADMIN_SETTINGS,
     )
-    return localtypes.AdminState.SETTINGS
+    return old_states.AdminState.SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -442,14 +443,14 @@ async def su_settings_callback(update: Update, context: CustomContext) -> int:
 
     await fail_if_admin_no_longer_exists(context)
 
-    if int(query.data) == localtypes.GO_BACK_CODE:
+    if int(query.data) == old_states.GO_BACK_CODE:
         await context.edit_last_msg(
             lookup="text.successful_login",
             keyboard=context.bot_data.keyboards.admin_main_menu(
                 context.chat_data.admin_menu.user.flags
             ),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
     match context.last_keyboard_buttons_by_index(int(query.data)):
         case button if button == "see_admin_names":
@@ -458,7 +459,7 @@ async def su_settings_callback(update: Update, context: CustomContext) -> int:
                     [
                         admin.public_name
                         for admin in await database.select_admins_without_flags(
-                            localtypes.AdminFlags.IS_MAINTAINER
+                            old_states.AdminFlags.IS_MAINTAINER
                         )
                     ]
                 )
@@ -488,19 +489,19 @@ async def su_settings_callback(update: Update, context: CustomContext) -> int:
                     }
                 ),
             )
-            return localtypes.AdminState.SELECTING_ADMIN_TO_DELETE
+            return old_states.AdminState.SELECTING_ADMIN_TO_DELETE
         case button if button == "add_department":
             await query.edit_message_text(
                 lookup="text.enter_department_name",
-                keyboard=localtypes.KeyboardsAliases.GO_BACK,
+                keyboard=old_states.KeyboardsAliases.GO_BACK,
             )
-            return localtypes.AdminState.ENTERING_DEPARTMENT_NAME
+            return old_states.AdminState.ENTERING_DEPARTMENT_NAME
         case button if button == "remove_department":
             await context.edit_last_msg(
                 lookup="text.select_admin_to_delete",
                 keyboard=context.bot_data.keyboards.departments(context.bot_data.per),
             )
-            return localtypes.AdminState.SELECTING_DEPARTMENT_TO_DELETE
+            return old_states.AdminState.SELECTING_DEPARTMENT_TO_DELETE
         case any:
             raise NotImplementedError(
                 f"Most settings aren't ready yet (including {any})"
@@ -508,14 +509,14 @@ async def su_settings_callback(update: Update, context: CustomContext) -> int:
 
     await context.new_msg(
         lookup="text.su_admin_settings",
-        keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
     )
 
-    return localtypes.AdminState.SU_SETTINGS
+    return old_states.AdminState.SU_SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -531,14 +532,14 @@ async def delete_admin_callback(update: Update, context: CustomContext) -> int:
 
     await context.new_msg(
         lookup="text.su_admin_settings",
-        keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
     )
 
-    return localtypes.AdminState.SU_SETTINGS
+    return old_states.AdminState.SU_SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -553,20 +554,20 @@ async def new_department(update: Update, context: CustomContext) -> int:
         {dept_name_hash: dept_name}
     )
     context.bot_data.persistent_data.get("old_departments").pop(dept_name_hash, None)
-    context.bot_data.persistent_data.dump(localtypes.FileNames.DEFAULTS)
+    context.bot_data.persistent_data.dump(old_states.FileNames.DEFAULTS)
 
     await context.new_msg(lookup="text.operation_success")
 
     await context.new_msg(
         lookup="text.su_admin_settings",
-        keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
     )
 
-    return localtypes.AdminState.SU_SETTINGS
+    return old_states.AdminState.SU_SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -576,30 +577,30 @@ async def delete_department_callback(update: Update, context: CustomContext) -> 
 
     await fail_if_admin_no_longer_exists(context)
     try:
-        if int(query.data) == localtypes.GO_BACK_CODE:
+        if int(query.data) == old_states.GO_BACK_CODE:
             await context.edit_last_msg(
                 lookup="text.su_admin_settings",
-                keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+                keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
             )
-            return localtypes.AdminState.SU_SETTINGS
+            return old_states.AdminState.SU_SETTINGS
     except ValueError:
         pass
 
     value = context.bot_data.persistent_data.get("departments").pop(query.data)
     context.bot_data.persistent_data.get("old_departments").update({query.data: value})
-    context.bot_data.persistent_data.dump(localtypes.FileNames.DEFAULTS)
+    context.bot_data.persistent_data.dump(old_states.FileNames.DEFAULTS)
 
     await context.edit_last_msg("text.operation_success")
 
     await context.new_msg(
         lookup="text.su_admin_settings",
-        keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
     )
-    return localtypes.AdminState.SU_SETTINGS
+    return old_states.AdminState.SU_SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -609,24 +610,24 @@ async def maintainer_settings_callback(update: Update, context: CustomContext) -
 
     await fail_if_admin_no_longer_exists(context)
 
-    if int(query.data) == localtypes.GO_BACK_CODE:
+    if int(query.data) == old_states.GO_BACK_CODE:
         await context.edit_last_msg(
             lookup="text.successful_login",
             keyboard=context.bot_data.keyboards.admin_main_menu(
                 context.chat_data.admin_menu.user.flags
             ),
         )
-        return localtypes.AdminState.MAIN_MENU
+        return old_states.AdminState.MAIN_MENU
 
     match context.last_keyboard_buttons_by_index(int(query.data)):
         case button if button == "backup_db":
-            with open(localtypes.FileNames.DB, "rb") as file:
+            with open(old_states.FileNames.DB, "rb") as file:
                 await context.bot.send_document(
                     chat_id=update.effective_chat.id, document=file
                 )
             await context.edit_last_msg(lookup="buttons.maintainer_settings.backup_db")
         case button if button == "backup_logs":
-            with open(localtypes.FileNames.LOG, "rb") as file:
+            with open(old_states.FileNames.LOG, "rb") as file:
                 await context.bot.send_document(
                     chat_id=update.effective_chat.id, document=file
                 )
@@ -636,13 +637,13 @@ async def maintainer_settings_callback(update: Update, context: CustomContext) -
         case button if button == "listen_to_errors":
             admin = context.chat_data.admin_menu.user
             await database.update_error_listening_status(
-                admin.id, not (admin.flags & localtypes.AdminFlags.LOG_ERRORS)
+                admin.id, not (admin.flags & old_states.AdminFlags.LOG_ERRORS)
             )
             await context.edit_last_msg(
                 text=context.bot_data.persistent_data.get(
                     "text.updated_error_listener_status"
                 )
-                + str(not (admin.flags & localtypes.AdminFlags.LOG_ERRORS))
+                + str(not (admin.flags & old_states.AdminFlags.LOG_ERRORS))
             )
             await update_admin_status(context)
 
@@ -653,14 +654,14 @@ async def maintainer_settings_callback(update: Update, context: CustomContext) -
 
     await context.new_msg(
         lookup="text.maintainer_settings",
-        keyboard=localtypes.KeyboardsAliases.MAINTAINER_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.MAINTAINER_SETTINGS,
     )
 
-    return localtypes.AdminState.MAINTAINER_SETTINGS
+    return old_states.AdminState.MAINTAINER_SETTINGS
 
 
 @error_handling.log_on_error_and_return(
-    localtypes.MainMenuState.ERROR_ENCOUNTERED,
+    old_states.MainMenuState.ERROR_ENCOUNTERED,
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
@@ -675,7 +676,7 @@ async def fallback(update: Update, context: CustomContext) -> int:
             context.chat_data.admin_menu.user.flags
         ),
     )
-    return localtypes.AdminState.MAIN_MENU
+    return old_states.AdminState.MAIN_MENU
 
 
 async def return_to_su_settings(update: Update, context: CustomContext) -> int:
@@ -683,9 +684,9 @@ async def return_to_su_settings(update: Update, context: CustomContext) -> int:
 
     await context.edit_last_msg(
         lookup="text.su_admin_settings",
-        keyboard=localtypes.KeyboardsAliases.SU_ADMIN_SETTINGS,
+        keyboard=old_states.KeyboardsAliases.SU_ADMIN_SETTINGS,
     )
-    return localtypes.AdminState.SU_SETTINGS
+    return old_states.AdminState.SU_SETTINGS
 
 
 async def return_to_main_menu(update: Update, context: CustomContext) -> int:
@@ -693,6 +694,6 @@ async def return_to_main_menu(update: Update, context: CustomContext) -> int:
     await context.edit_last_msg(lookup="text.sorry_error")
     await context.new_msg(
         lookup="text.return_to_main_menu",
-        keyboard=localtypes.KeyboardsAliases.MAIN_MENU,
+        keyboard=old_states.KeyboardsAliases.MAIN_MENU,
     )
-    return localtypes.MainMenuState.MAIN_MENU
+    return old_states.MainMenuState.MAIN_MENU

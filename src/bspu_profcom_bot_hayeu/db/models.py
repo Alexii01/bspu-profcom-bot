@@ -6,19 +6,20 @@ import functools
 import bcrypt
 import string
 
-from bot_utils import database
-from bot_utils.models import SeqGenerator
-from bot_utils import localtypes
+from bspu_profcom_bot_hayeu.db import database
+from bspu_profcom_bot_hayeu.models import SeqGenerator
+from bspu_profcom_bot_hayeu import old_states
 
 
+# TODO: Stop using a dataclass, write all the necessary functions by hand
 @dataclass
 class Question:
     id: UUID | str
     user_id: int | None
     department_id: str
     asked_date: str | datetime
-    answered_by: int | None
-    answered_date: str | datetime | None
+    answered_by: int | None = None
+    answered_date: str | datetime | None = None
     message: str
     is_in_db = False
     is_deleted = False
@@ -87,7 +88,7 @@ class Admin:
     public_name: str
     user_id: int | None
     password_hash: str
-    flags: localtypes.AdminFlags
+    flags: old_states.AdminFlags
     __is_deleted: bool = False
 
     @staticmethod
@@ -107,7 +108,7 @@ class Admin:
         *,
         public_name: str | None = None,
         name_base: str = "",
-        flags: localtypes.AdminFlags = None,
+        flags: old_states.AdminFlags = None,
     ) -> Tuple[Self, str]:
         """Generates a password and initialises the fields with default values,
         then INSERTs into db.
@@ -132,6 +133,10 @@ class Admin:
     async def pull(cls, id: str) -> Self | None:
         """Returns an admin associated with a user"""
         return await database.select_admin_with_id(id)
+
+    @classmethod
+    async def authorise_new_admin(user_id: int, password: bytes):
+        return await database.authorise_new_admin(user_id, password)
 
     async def set_user_id(self, user_id: int):
         if self.user_id:

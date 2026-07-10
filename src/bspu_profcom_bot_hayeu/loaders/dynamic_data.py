@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any, Dict
 
-from bot_utils import decorators
+from bspu_profcom_bot_hayeu import decorators
 
 logger = logging.getLogger(__name__)
 

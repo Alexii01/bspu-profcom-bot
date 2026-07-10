@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bspu-profcom-bot-hayeu"
+version = "0.2.2"
+authors = [{ name = "Aliaksei Haeyu", email = "ggaev.alex.work@gmail.com" }]
+description = "A telegram bot for BSPU's organisation"
+readme = "README.md"
+requires-python = ">=3.14"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICEN[CS]E*"]
+
+dependencies = ["aiosqlite~=0.22.1", "bcrypt~=5.0", "python-telegram-bot~=22.7"]
+
+[project.urls]
+# TODO: Fill in properly
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"
