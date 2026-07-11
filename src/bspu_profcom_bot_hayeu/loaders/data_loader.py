@@ -1,51 +1,61 @@
 import json
 import logging
 from typing import Any, Dict
-
-from bspu_profcom_bot_hayeu import decorators
+from collections import UserDict
 
 logger = logging.getLogger(__name__)
 
 
-class SharedDynamicDataClass:
-    def __init__(self, name: str, file: str = None, new_data: Dict[Any, Any] = {}):
+class DataLoader(UserDict):
+    """Allows convenient reading and access to JSON data"""
+
+    def __init__(
+        self,
+        name: str,
+        filepath: str = None,
+        new_data: Dict[Any, Any] = {},
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
         self.name = name
-        self.associated_file = file
+        self.associated_file = filepath
         self.data = new_data
 
         if self.associated_file:
             self.load()
 
     def load(self, filepath: str = None):
-        if not filepath:
-            filepath = self.associated_file
+        """Reads data from `filepath` or `DataLoader.associated_file`"""
+        filepath = filepath or self.associated_file
 
         with open(file=filepath, mode="r", encoding="utf-8") as data_file:
             logger.info(f"{self.name} load from {filepath}")
-            data = json.load(data_file)
-
-        self.data = data
+            self.data = json.load(data_file)
 
     def dump(self, filepath: str = None):
+        """Dumps data to `filepath` or `DataLoader.associated_file`"""
         if self.data is None:
             return
 
-        if not filepath:
-            filepath = self.associated_file
+        filepath = filepath or self.associated_file
 
         with open(file=filepath, mode="w", encoding="utf-8") as data_file:
             logger.info(f"{self.name} dump to {filepath}")
             json.dump(self.data, data_file, indent=2, ensure_ascii=False)
 
-    @decorators.log_error_and_reraise(logger=logger)
-    def get(self, key: str):
+    def __getitem__(self, key: str | None) -> Dict | Any:
+        """Read nested data as if they're arguments in nested classes.
+
+        Example: `loader["parent.intermediate.final"]`"""
         if self.data is None:
-            raise UnboundLocalError(
-                f"Attempt to read from empty SharedDynamicDataClass ({key})"
-            )
+            raise UnboundLocalError(f"Attempt to read from empty DataLoader ({key})")
+
+        handle = self.data
+        if not key:
+            return self.data
 
         path = key.split(".")
-        handle = self.data
 
         for step in path:
             try:

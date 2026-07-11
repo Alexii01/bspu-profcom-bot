@@ -11,7 +11,6 @@ from telegram.ext import (
 )
 from telegram.ext import filters as msg_filters
 
-from bspu_profcom_bot_hayeu import decorators
 
 from bspu_profcom_bot_hayeu.actions import (
     main_menu,
@@ -20,7 +19,7 @@ from bspu_profcom_bot_hayeu.actions import (
 )
 
 from bspu_profcom_bot_hayeu import old_states
-from bspu_profcom_bot_hayeu.loaders.dynamic_data import SharedDynamicDataClass
+from bspu_profcom_bot_hayeu.loaders.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 filterwarnings(
@@ -28,14 +27,8 @@ filterwarnings(
 )
 
 
-@decorators.define_log(
-    logger=logger,
-    level=logging.DEBUG,
-    begin="Generating conversation handlers",
-    end="Finished generating conversation handlers!",
-)
 def generate_conversation_handler():
-    data_src = SharedDynamicDataClass("tmp", old_states.FileNames.DEFAULTS)
+    data_src = DataLoader("tmp", old_states.FileNames.DEFAULTS)
 
     admin_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("admin", callback=admin_menu.init_login)],

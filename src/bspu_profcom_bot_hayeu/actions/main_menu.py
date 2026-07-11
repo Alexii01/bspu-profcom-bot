@@ -1,9 +1,9 @@
 import logging
 
-from telegram import Update, CallbackQuery
+from telegram import Update
 from telegram import constants as TelegramConstants
 
-from bspu_profcom_bot_hayeu import old_states
+from bspu_profcom_bot_hayeu import old_states, services
 from bspu_profcom_bot_hayeu.actions import error_handling
 from bspu_profcom_bot_hayeu.context.custom_context import CustomContext
 
@@ -98,6 +98,10 @@ async def return_to_main_menu(update: Update, context: CustomContext) -> int:
 
 async def answer_test_question(update: Update, context: CustomContext) -> str:
     # TODO: Make a proper constructor which generates id instead of having it passed in
+    admin = services.verify_admin(update)
+    if admin is None:
+        return "illegal_request_view"
+
     q = await Question.new(
         # id=uuid4(),
         user_id=update.effective_user.id,
@@ -107,10 +111,9 @@ async def answer_test_question(update: Update, context: CustomContext) -> str:
     )
 
     q = await Question.pull(q.id)
-
     if q is None:
         return "question_error_view"
 
-    await q.answer("Test question answer")
+    await services.answer_question(q, admin, "Test question answer")
 
-    return "next_view_to_display"
+    return "confirm_succesful_test"

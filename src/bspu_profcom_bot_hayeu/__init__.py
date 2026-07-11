@@ -53,7 +53,9 @@ if __name__ == "__main__":
     with open(old_states.FileNames.CONFIG, encoding="utf-8") as config:
         data = config.read().splitlines(keepends=False)
         data = [
-            line for line in data if (not line.startswith("#")) and (not line == "")
+            line
+            for line in data
+            if not (line.startswith("#") or line == "" or line.isspace())
         ]
 
         TOKEN: Final = data[0]

@@ -15,7 +15,7 @@ from telegram.ext import (
 )
 
 
-from bspu_profcom_bot_hayeu.loaders.dynamic_data import SharedDynamicDataClass
+from bspu_profcom_bot_hayeu.loaders.data_loader import DataLoader
 from bspu_profcom_bot_hayeu.loaders.keyboards import Keyboards
 from bspu_profcom_bot_hayeu.db.models import Admin, Question
 from bspu_profcom_bot_hayeu.db import database
@@ -28,12 +28,10 @@ logger = logging.getLogger("custom_context")
 class BotContext:
     def __init__(self):
         self.reserved_questions = set()
-        self.persistent_data: SharedDynamicDataClass = SharedDynamicDataClass(
+        self.persistent_data: DataLoader = DataLoader(
             "persistent_bot_data", old_states.FileNames.DEFAULTS
         )
-        self.runtime_data: SharedDynamicDataClass = SharedDynamicDataClass(
-            "runtime_bot_data"
-        )
+        self.runtime_data: DataLoader = DataLoader("runtime_bot_data")
         self.keyboards: Keyboards = Keyboards(self.persistent_data.get("keyboard_data"))
 
     def get(self, key):

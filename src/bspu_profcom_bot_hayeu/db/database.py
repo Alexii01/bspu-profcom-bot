@@ -7,7 +7,7 @@ import bcrypt
 import functools
 from typing import Iterable
 
-from bspu_profcom_bot_hayeu import models, decorators, old_states
+from bspu_profcom_bot_hayeu import models, old_states
 
 logger = logging.getLogger(__name__)
 
@@ -211,22 +211,10 @@ async def insert_admin(conn: aiosqlite.Connection, admin: models.Admin):
     await insert_admin_with_existing_connection(conn, admin)
 
 
-@decorators.define_log(
-    logger=logger,
-    level=logging.INFO,
-    begin="Verifying db schema",
-    end="DB schema is set",
-)
 async def __create_tables_if_not_present(conn: aiosqlite.Connection):
     await conn.executescript(__MAKE_SCHEMA)
 
 
-@decorators.conditional_log(
-    logger=logger,
-    level=logging.INFO,
-    if_true="Superuser admin exists",
-    if_false="No superuser admin exists!",
-)
 async def __super_maintainer_exists(conn: aiosqlite.Connection):
     async with conn.execute(__SUPERUSER_MAINTAINER_EXISTS) as cursor:
         return (await cursor.fetchone())[0]
@@ -253,12 +241,6 @@ async def __create_super_maintainer_if_not_present(conn: aiosqlite.Connection):
     logger.info("Superuser admin created!")
 
 
-@decorators.define_log(
-    logger=logger,
-    level=logging.INFO,
-    begin="Verifying database",
-    end="Database setup verified",
-)
 @__with_connection
 async def __setup_sqlite_db(conn: aiosqlite.Connection):
     await __create_tables_if_not_present(conn)
