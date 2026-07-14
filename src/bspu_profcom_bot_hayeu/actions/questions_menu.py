@@ -8,7 +8,7 @@ from bspu_profcom_bot_hayeu.db.models import Question
 from bspu_profcom_bot_hayeu.db import database
 from bspu_profcom_bot_hayeu import old_states
 from bspu_profcom_bot_hayeu.actions import error_handling
-from bspu_profcom_bot_hayeu.context.custom_context import CustomContext
+from bspu_profcom_bot_hayeu.old_context.custom_context import CustomContext
 
 logger = logging.getLogger(__name__)
 

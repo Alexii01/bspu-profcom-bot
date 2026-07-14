@@ -5,7 +5,7 @@ from telegram import constants as TelegramConstants
 
 from bspu_profcom_bot_hayeu import old_states, services
 from bspu_profcom_bot_hayeu.actions import error_handling
-from bspu_profcom_bot_hayeu.context.custom_context import CustomContext
+from bspu_profcom_bot_hayeu.old_context.custom_context import CustomContext
 
 # TODO: REMOVE, THIS IS FOR TESTING
 from bspu_profcom_bot_hayeu.db.models import Question

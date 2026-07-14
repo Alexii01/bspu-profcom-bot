@@ -19,14 +19,10 @@ class Text:
         Example: `Text.load("appdata.json", "application.messages.text")`"""
 
         loader = DataLoader("message_loader", filepath)
-        return (
-            {
-                key: Text(
-                    value["text"], value["parse_mode"], value["expected_variables"]
-                )
-                for key, value in loader[path].items()
-            },
-        )
+        return {
+            key: Text(value["text"], value["parse_mode"], value["expected_variables"])
+            for key, value in loader[path].items()
+        }
 
     def verify_variables(self, vars: dict) -> bool:
         """Checks if the provided dictionary contains all object needed to fill in the template"""

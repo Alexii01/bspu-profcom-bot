@@ -158,3 +158,9 @@ class Admin:
         """Delete admin from db"""
         await database.delete_admin_with_id(self.id)
         self.__is_deleted = True
+
+
+# TODO: Fill in ORM
+@dataclass
+class Department:
+    pass

@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 
 from bspu_profcom_bot_hayeu.db import database
-from bspu_profcom_bot_hayeu.context.custom_context import CustomContext
+from bspu_profcom_bot_hayeu.old_context.custom_context import CustomContext
 from bspu_profcom_bot_hayeu.actions import error_handling
 from bspu_profcom_bot_hayeu import models, old_states
 

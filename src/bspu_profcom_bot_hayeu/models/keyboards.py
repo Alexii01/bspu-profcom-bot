@@ -80,3 +80,5 @@ class Keyboard(NamedTuple):
             return self.__gen_inline_keyboard(buttons)
         if self.type is ReplyKeyboardMarkup:
             return self.__gen_reply_keyboard(buttons)
+
+        raise ValueError("Somehow keyboard is neither inline nor reply.")

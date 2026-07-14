@@ -11,7 +11,7 @@ from telegram.constants import ParseMode, MessageLimit
 from telegram import Update
 
 from bspu_profcom_bot_hayeu.db import database
-from bspu_profcom_bot_hayeu.context import custom_context
+from bspu_profcom_bot_hayeu.old_context import custom_context
 from bspu_profcom_bot_hayeu import old_states
 
 

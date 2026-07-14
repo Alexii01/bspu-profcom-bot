@@ -10,12 +10,12 @@ from telegram.ext import (
 )
 
 from bspu_profcom_bot_hayeu import setup, old_states
-from bspu_profcom_bot_hayeu.context import custom_context
+from bspu_profcom_bot_hayeu.old_context import custom_context
 from bspu_profcom_bot_hayeu.db.database import setup_sqlite_db
 
 
 # TODO: Fill in with loading in JSON data
-async def finish_setup(application: Application):
+async def finish_setup(app: Application):
     pass
 
 
@@ -93,3 +93,5 @@ if __name__ == "__main__":
     app.run_polling(
         poll_interval=0.1, allowed_updates=Update.ALL_TYPES, close_loop=False
     )
+
+    # TODO: Research Pydantic, check if it could be useful in models
