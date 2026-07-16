@@ -12,7 +12,7 @@ class DataLoader(UserDict):
     def __init__(
         self,
         name: str,
-        filepath: str = None,
+        filepath: str,
         new_data: Dict[Any, Any] = {},
         *args,
         **kwargs,
@@ -25,23 +25,20 @@ class DataLoader(UserDict):
         if self.associated_file:
             self.load()
 
-    def load(self, filepath: str = None):
+    def load(self):
         """Reads data from `filepath` or `DataLoader.associated_file`"""
-        filepath = filepath or self.associated_file
 
-        with open(file=filepath, mode="r", encoding="utf-8") as data_file:
-            logger.info(f"{self.name} load from {filepath}")
+        with open(file=self.associated_file, mode="r", encoding="utf-8") as data_file:
+            logger.info(f"{self.name} load from {self.associated_file}")
             self.data = json.load(data_file)
 
-    def dump(self, filepath: str = None):
+    def dump(self):
         """Dumps data to `filepath` or `DataLoader.associated_file`"""
         if self.data is None:
             return
 
-        filepath = filepath or self.associated_file
-
-        with open(file=filepath, mode="w", encoding="utf-8") as data_file:
-            logger.info(f"{self.name} dump to {filepath}")
+        with open(file=self.associated_file, mode="w", encoding="utf-8") as data_file:
+            logger.info(f"{self.name} dump to {self.associated_file}")
             json.dump(self.data, data_file, indent=2, ensure_ascii=False)
 
     def __getitem__(self, key: str | None) -> Dict | Any:

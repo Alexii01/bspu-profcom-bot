@@ -8,21 +8,20 @@ from telegram.ext import (
 )
 
 from bspu_profcom_bot_hayeu.models.text import Text
-from bspu_profcom_bot_hayeu.db.models import Admin, Question
+from bspu_profcom_bot_hayeu.db import Question, Admin
 
 
 @dataclass
-class BotState:
+class BotContext:
     reserved_questions: set
     texts: Dict[str, Text]
     keyboards: Dict[str, Callable[..., InlineKeyboardMarkup | ReplyKeyboardMarkup]]
 
 
 @dataclass
-class ChatState:
+class ChatContext:
     # Message-managing
     last_messages: List[Message]
-    last_view_name: str
     last_keyboard_name: str
     # Admin menu
     user: Admin
@@ -35,6 +34,6 @@ class ChatState:
     asked_questions: List[Question]
 
 
-class StateContext(CallbackContext[ExtBot, None, ChatState, BotState]):
+class BspuContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     def __init__(self, application, chat_id=None, user_id=None):
         super().__init__(application, chat_id, user_id)

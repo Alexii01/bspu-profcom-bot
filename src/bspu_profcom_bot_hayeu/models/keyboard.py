@@ -4,7 +4,7 @@ import hashlib
 
 from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 
-from bspu_profcom_bot_hayeu.loaders.data_loader import DataLoader
+from bspu_profcom_bot_hayeu.data_loader import DataLoader
 from bspu_profcom_bot_hayeu.router.dispatch_types import DispatchCallable
 
 
@@ -49,9 +49,7 @@ class Keyboard(NamedTuple):
         }
 
     def __gen_reply_keyboard(self, buttons_text: Dict[str, str]) -> ReplyKeyboardMarkup:
-        return ReplyKeyboardMarkup.from_column(
-            [buttons_text[key] for key in self.buttons.keys()]
-        )
+        return ReplyKeyboardMarkup.from_column([buttons_text[key] for key in self.buttons.keys()])
 
     def __gen_inline_keyboard(
         self, buttons_text: Dict[str, str]
@@ -64,9 +62,7 @@ class Keyboard(NamedTuple):
         return (
             InlineKeyboardMarkup.from_column(
                 [
-                    InlineKeyboardButton(
-                        text=buttons_text[key], callback_data=representation[key]
-                    )
+                    InlineKeyboardButton(text=buttons_text[key], callback_data=representation[key])
                     for key in self.buttons.keys()
                 ]
             ),
@@ -75,7 +71,7 @@ class Keyboard(NamedTuple):
 
     def __call__(
         self, buttons: Dict[str, str]
-    ) -> ReplyKeyboardMarkup | InlineKeyboardMarkup:
+    ) -> ReplyKeyboardMarkup | Tuple[InlineKeyboardMarkup, Dict[str, str]]:
         if self.type is InlineKeyboardMarkup:
             return self.__gen_inline_keyboard(buttons)
         if self.type is ReplyKeyboardMarkup:

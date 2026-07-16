@@ -13,9 +13,7 @@ from bspu_profcom_bot_hayeu.old_context.custom_context import CustomContext
 logger = logging.getLogger(__name__)
 
 
-@error_handling.log_on_error_and_return(
-    old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger
-)
+@error_handling.log_on_error_and_return(old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger)
 async def main(update: Update, context: CustomContext) -> int:
     """Gives user access to menus within"""
 
@@ -27,9 +25,7 @@ async def main(update: Update, context: CustomContext) -> int:
     return old_states.QuestionState.MAIN_MENU
 
 
-@error_handling.log_on_error_and_return(
-    old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger
-)
+@error_handling.log_on_error_and_return(old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger)
 async def main_callback(update: Update, context: CustomContext) -> int:
     """Processes queries received from the question menu"""
     query = update.callback_query
@@ -63,9 +59,7 @@ async def main_callback(update: Update, context: CustomContext) -> int:
             return old_states.QuestionState.QUESTION_VIEW_MENU
 
 
-@error_handling.log_on_error_and_return(
-    old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger
-)
+@error_handling.log_on_error_and_return(old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger)
 async def department_selected(update: Update, context: CustomContext) -> int:
     """Processes queries received from the experts menu"""
     query = update.callback_query
@@ -90,9 +84,7 @@ async def department_selected(update: Update, context: CustomContext) -> int:
     return old_states.QuestionState.ASKING_QUESTION
 
 
-@error_handling.log_on_error_and_return(
-    old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger
-)
+@error_handling.log_on_error_and_return(old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger)
 async def view_msg_callback(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
 
@@ -111,9 +103,7 @@ async def view_msg_callback(update: Update, context: CustomContext) -> int:
 
     context.chat_data.question_menu.viewing_question = update.callback_query.data
 
-    logging.debug(
-        "%d: Viewing question %s", update.effective_user.id, update.callback_query.data
-    )
+    logging.debug("%d: Viewing question %s", update.effective_user.id, update.callback_query.data)
 
     # TODO: Add proper message info: date, department, blablabla
     # TODO: Ensure that the message is under the maximum message length limit
@@ -131,9 +121,7 @@ async def view_msg_callback(update: Update, context: CustomContext) -> int:
     return old_states.QuestionState.VIEWING_QUESTION
 
 
-@error_handling.log_on_error_and_return(
-    old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger
-)
+@error_handling.log_on_error_and_return(old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger)
 async def questions_list_callback(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     query = update.callback_query
@@ -163,9 +151,7 @@ async def questions_list_callback(update: Update, context: CustomContext) -> int
             return old_states.QuestionState.MAIN_MENU
 
 
-@error_handling.log_on_error_and_return(
-    old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger
-)
+@error_handling.log_on_error_and_return(old_states.MainMenuState.ERROR_ENCOUNTERED, logger=logger)
 async def question(update: Update, context: CustomContext) -> int:
     """Parses and saves user's question, sending them back to question menu"""
     department_id = context.chat_data.question_menu.selected_department
