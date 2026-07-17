@@ -1,28 +1,38 @@
 from dataclasses import dataclass
-from typing import Dict, List, Callable
+from typing import Mapping, Dict, List
 
-from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, Message
+from telegram import Message
 from telegram.ext import (
     CallbackContext,
     ExtBot,
 )
 
-from bspu_profcom_bot_hayeu.models.text import Text
+from bspu_profcom_bot_hayeu.models import Text, Keyboard
 from bspu_profcom_bot_hayeu.db import Question, Admin
+from bspu_profcom_bot_hayeu.callback_registry import Callback
 
 
 @dataclass
 class BotContext:
-    reserved_questions: set
+    # Magic
     texts: Dict[str, Text]
-    keyboards: Dict[str, Callable[..., InlineKeyboardMarkup | ReplyKeyboardMarkup]]
+    buttons: Dict[str, str]
+    keyboards: Dict[str, Keyboard]
+    actions: Mapping[str, Callback]
+    views: Mapping[str, Callback]
+    # Admin stuff
+    reserved_questions: set[Question]
+    # Maintainer stuff
+    error_logs: List[str]
 
 
 @dataclass
 class ChatContext:
     # Message-managing
     last_messages: List[Message]
-    last_keyboard_name: str
+    last_keyboard_name: str | None
+    input_parser: Callback | None
+    token_store: Dict[str, str]
     # Admin menu
     user: Admin
     representing_department: str

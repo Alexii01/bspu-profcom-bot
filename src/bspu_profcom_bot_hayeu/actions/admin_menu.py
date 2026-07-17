@@ -24,7 +24,6 @@ async def update_admin_status(context: CustomContext):
         context.chat_data.admin_menu.user = result
 
 
-# TODO: Use this function wherever it is appropriate
 async def fail_if_admin_no_longer_exists(context: CustomContext):
     if not await database.admin_exists(context.chat_data.admin_menu.user.id):
         admin_no_longer_exists_error()
@@ -50,9 +49,7 @@ async def init_login(update: Update, context: CustomContext) -> int:
         )
         return old_states.AdminState.MAIN_MENU
 
-    await update.message.reply_text(
-        text=context.bot_data.persistent_data.get("text.admin_login")
-    )
+    await update.message.reply_text(text=context.bot_data.persistent_data.get("text.admin_login"))
     return old_states.AdminState.LOGIN
 
 
@@ -62,9 +59,7 @@ async def init_login(update: Update, context: CustomContext) -> int:
     cleanup_func=cleanup_on_error,
 )
 async def login(update: Update, context: CustomContext) -> int:
-    result = await database.authorise_new_admin(
-        update.effective_user.id, update.message.text
-    )
+    result = await database.authorise_new_admin(update.effective_user.id, update.message.text)
     if result is None:
         await update.message.reply_text(
             text=context.bot_data.persistent_data.get("text.return_to_main_menu"),
@@ -102,9 +97,7 @@ async def output_question_to_answer_via_update(question, context: CustomContext)
     )
 
 
-async def answer_another_question_via_query(
-    update: Update, context: CustomContext
-) -> int:
+async def answer_another_question_via_query(update: Update, context: CustomContext) -> int:
     query = update.callback_query
 
     if not context.chat_data.admin_menu.selected_department:
@@ -258,9 +251,7 @@ async def answering_menu_callback(update: Update, context: CustomContext) -> int
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
-async def confirm_question_deletion_callback(
-    update: Update, context: CustomContext
-) -> int:
+async def confirm_question_deletion_callback(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     query = update.callback_query
 
@@ -270,9 +261,7 @@ async def confirm_question_deletion_callback(
         await output_question_to_answer_via_query(context)
         return old_states.AdminState.ANSWERING_QUESTIONS
 
-    await database.delete_question_by_id(
-        context.chat_data.admin_menu.answering_question.id
-    )
+    await database.delete_question_by_id(context.chat_data.admin_menu.answering_question.id)
 
     await reply_to_question(context, "Учите русский")
 
@@ -285,9 +274,7 @@ async def confirm_question_deletion_callback(
     logger=logger,
     cleanup_func=cleanup_on_error,
 )
-async def redirect_to_department_callback(
-    update: Update, context: CustomContext
-) -> int:
+async def redirect_to_department_callback(update: Update, context: CustomContext) -> int:
     await update.callback_query.answer()
     query = update.callback_query
 
@@ -314,9 +301,7 @@ async def redirect_to_department_callback(
 async def answering_menu_reply(update: Update, context: CustomContext) -> int:
     await reply_to_question(context, update.message.text_html)
 
-    await database.delete_question_by_id(
-        context.chat_data.admin_menu.answering_question.id
-    )
+    await database.delete_question_by_id(context.chat_data.admin_menu.answering_question.id)
     context.chat_data.admin_menu.answering_question = None
 
     await context.new_msg(
@@ -365,9 +350,7 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
             return old_states.AdminState.ENTERING_NAME
         case button if button == "select_department":
             await context.edit_last_msg(
-                text=context.bot_data.persistent_data.get(
-                    "text.admin_select_departments"
-                )
+                text=context.bot_data.persistent_data.get("text.admin_select_departments")
                 + (
                     context.bot_data.persistent_data.get(
                         f"departments.{context.chat_data.admin_menu.selected_department}"
@@ -399,9 +382,7 @@ async def settings_callback(update: Update, context: CustomContext) -> int:
 )
 async def update_name(update: Update, context: CustomContext) -> int:
     await fail_if_admin_no_longer_exists(context)
-    await database.update_admin_name(
-        update.message.text, context.chat_data.admin_menu.user.id
-    )
+    await database.update_admin_name(update.message.text, context.chat_data.admin_menu.user.id)
     await context.new_msg(
         lookup="text.admin_settings",
         keyboard=old_states.KeyboardsAliases.ADMIN_SETTINGS,
@@ -503,9 +484,7 @@ async def su_settings_callback(update: Update, context: CustomContext) -> int:
             )
             return old_states.AdminState.SELECTING_DEPARTMENT_TO_DELETE
         case any:
-            raise NotImplementedError(
-                f"Most settings aren't ready yet (including {any})"
-            )
+            raise NotImplementedError(f"Most settings aren't ready yet (including {any})")
 
     await context.new_msg(
         lookup="text.su_admin_settings",
@@ -550,9 +529,7 @@ async def new_department(update: Update, context: CustomContext) -> int:
 
     dept_name_hash = hashlib.sha256(processed_dept_name.encode("utf-8")).hexdigest()
 
-    context.bot_data.persistent_data.get("departments").update(
-        {dept_name_hash: dept_name}
-    )
+    context.bot_data.persistent_data.get("departments").update({dept_name_hash: dept_name})
     context.bot_data.persistent_data.get("old_departments").pop(dept_name_hash, None)
     context.bot_data.persistent_data.dump(old_states.FileNames.DEFAULTS)
 
@@ -622,35 +599,25 @@ async def maintainer_settings_callback(update: Update, context: CustomContext) -
     match context.last_keyboard_buttons_by_index(int(query.data)):
         case button if button == "backup_db":
             with open(old_states.FileNames.DB, "rb") as file:
-                await context.bot.send_document(
-                    chat_id=update.effective_chat.id, document=file
-                )
+                await context.bot.send_document(chat_id=update.effective_chat.id, document=file)
             await context.edit_last_msg(lookup="buttons.maintainer_settings.backup_db")
         case button if button == "backup_logs":
             with open(old_states.FileNames.LOG, "rb") as file:
-                await context.bot.send_document(
-                    chat_id=update.effective_chat.id, document=file
-                )
-            await context.edit_last_msg(
-                lookup="buttons.maintainer_settings.backup_logs"
-            )
+                await context.bot.send_document(chat_id=update.effective_chat.id, document=file)
+            await context.edit_last_msg(lookup="buttons.maintainer_settings.backup_logs")
         case button if button == "listen_to_errors":
             admin = context.chat_data.admin_menu.user
             await database.update_error_listening_status(
                 admin.id, not (admin.flags & old_states.AdminFlags.LOG_ERRORS)
             )
             await context.edit_last_msg(
-                text=context.bot_data.persistent_data.get(
-                    "text.updated_error_listener_status"
-                )
+                text=context.bot_data.persistent_data.get("text.updated_error_listener_status")
                 + str(not (admin.flags & old_states.AdminFlags.LOG_ERRORS))
             )
             await update_admin_status(context)
 
         case any:
-            raise NotImplementedError(
-                f"Most settings aren't ready yet (including {any})"
-            )
+            raise NotImplementedError(f"Most settings aren't ready yet (including {any})")
 
     await context.new_msg(
         lookup="text.maintainer_settings",

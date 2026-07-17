@@ -124,9 +124,7 @@ async def log_and_recover(
                 cls=ChatContextEncoder,
             )
         }\n\n"
-        f"context.user_data = {
-            json.dumps(context.user_data, indent=2, ensure_ascii=False)
-        }\n\n"
+        f"context.user_data = {json.dumps(context.user_data, indent=2, ensure_ascii=False)}\n\n"
         f"{tb_string}"
     )
 
@@ -151,25 +149,17 @@ async def log_and_recover(
         f"<pre>{html.escape(tb_string)}</pre>"
     )
 
-    split_message = split_message_into_valid_chunks(
-        message, MessageLimit.MAX_TEXT_LENGTH
-    )
+    split_message = split_message_into_valid_chunks(message, MessageLimit.MAX_TEXT_LENGTH)
 
     # Sending data to dev over telegram
-    devs = await database.select_maintainers_ids_with_flags(
-        old_states.AdminFlags.LOG_ERRORS
-    )
+    devs = await database.select_maintainers_ids_with_flags(old_states.AdminFlags.LOG_ERRORS)
 
     for dev in devs:
         for chunk in split_message:
             try:
-                await context.bot.send_message(
-                    chat_id=dev, text=chunk, parse_mode=ParseMode.HTML
-                )
+                await context.bot.send_message(chat_id=dev, text=chunk, parse_mode=ParseMode.HTML)
             except BaseException:
-                await context.bot.send_message(
-                    chat_id=dev, text="Failed to send error log chunk"
-                )
+                await context.bot.send_message(chat_id=dev, text="Failed to send error log chunk")
                 logger.warning(f"Failed to send error log chunk to {dev}")
 
 

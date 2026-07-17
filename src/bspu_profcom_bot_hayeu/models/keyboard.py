@@ -1,24 +1,19 @@
-from typing import NamedTuple, Tuple, Dict, Any
+from typing import NamedTuple, Literal, Tuple, Dict, Any
+
 from functools import partial
 import hashlib
 
 from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
-from bspu_profcom_bot_hayeu.router.dispatch_types import DispatchCallable
+from bspu_profcom_bot_hayeu.callback_registry import Callback
 
 
 async def _return_view(view: str, _update, _context):
     return view
 
 
-def _parse_type(value: Dict[str, Any]):
-    return InlineKeyboardMarkup if value["type"] == "inline" else ReplyKeyboardMarkup
-
-
-def _build_buttons(
-    value: Dict[str, Any], actions: Dict[str, DispatchCallable]
-) -> Dict[str, DispatchCallable]:
+def _build_buttons(value: Dict[str, Any], actions: Dict[str, Callback]) -> Dict[str, Callback]:
     return {
         button_key: partial(_return_view, button_value["view"])
         if "view" in button_value
@@ -28,12 +23,12 @@ def _build_buttons(
 
 
 class Keyboard(NamedTuple):
-    type: type[ReplyKeyboardMarkup] | type[InlineKeyboardMarkup]
-    buttons: Dict[str, DispatchCallable]
+    type: Literal["inline", "reply"]
+    buttons: Dict[str, Callback]
 
     @staticmethod
     def load(
-        filepath: str, actions: Dict[str, DispatchCallable], path: str | None = None
+        filepath: str, actions: Dict[str, Callback], path: str | None = None
     ) -> Dict[str, Keyboard]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
@@ -42,14 +37,16 @@ class Keyboard(NamedTuple):
         loader = DataLoader("keyboard_loader", filepath)
         return {
             key: Keyboard(
-                type=_parse_type(value),
+                type=value["type"],
                 buttons=_build_buttons(value, actions),
             )
             for key, value in loader[path].items()
         }
 
     def __gen_reply_keyboard(self, buttons_text: Dict[str, str]) -> ReplyKeyboardMarkup:
-        return ReplyKeyboardMarkup.from_column([buttons_text[key] for key in self.buttons.keys()])
+        return ReplyKeyboardMarkup.from_column(
+            [buttons_text[key] for key in self.buttons.keys()], one_time_keyboard=True
+        )
 
     def __gen_inline_keyboard(
         self, buttons_text: Dict[str, str]
@@ -66,15 +63,13 @@ class Keyboard(NamedTuple):
                     for key in self.buttons.keys()
                 ]
             ),
-            representation,
+            {v: k for k, v in representation.items()},
         )
 
     def __call__(
         self, buttons: Dict[str, str]
     ) -> ReplyKeyboardMarkup | Tuple[InlineKeyboardMarkup, Dict[str, str]]:
-        if self.type is InlineKeyboardMarkup:
+        if self.type == "inline":
             return self.__gen_inline_keyboard(buttons)
-        if self.type is ReplyKeyboardMarkup:
+        else:
             return self.__gen_reply_keyboard(buttons)
-
-        raise ValueError("Somehow keyboard is neither inline nor reply.")

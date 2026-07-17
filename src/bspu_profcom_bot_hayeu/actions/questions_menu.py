@@ -105,9 +105,6 @@ async def view_msg_callback(update: Update, context: CustomContext) -> int:
 
     logging.debug("%d: Viewing question %s", update.effective_user.id, update.callback_query.data)
 
-    # TODO: Add proper message info: date, department, blablabla
-    # TODO: Ensure that the message is under the maximum message length limit
-    # TODO: Avoid using two separate messages, merge and split only if necessary
     await context.edit_last_msg(
         text=context.bot_data.persistent_data.get("text.inspect_user_question")
         + (await database.select_question_by_id(update.callback_query.data)).message,

@@ -16,9 +16,13 @@ classifiers = [
 license = "Apache-2.0"
 license-files = ["LICEN[CS]E*"]
 
-dependencies = ["aiosqlite~=0.22.1", "bcrypt~=5.0", "python-telegram-bot~=22.7"]
+dependencies = [
+    "aiosqlite~=0.22.1",
+    "bcrypt~=5.0",
+    "python-telegram-bot~=22.7",
+    "dotenv~=0.9.9",
+]
 
 [project.urls]
-# TODO: Fill in properly
-Homepage = "https://github.com/pypa/sampleproject"
-Issues = "https://github.com/pypa/sampleproject/issues"
+Homepage = "https://github.com/Alexii01/bspu-profcom-bot"
+Issues = "https://github.com/Alexii01/bspu-profcom-bot/issues"

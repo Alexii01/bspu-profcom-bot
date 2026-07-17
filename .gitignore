@@ -6,6 +6,7 @@ persistence*
 *.json*
 *.log*
 *.ini*
+*.env*
 *.bin*
 *.ipynb*
 *.db*

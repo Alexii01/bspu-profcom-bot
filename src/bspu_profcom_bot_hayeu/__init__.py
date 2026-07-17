@@ -1,8 +1,10 @@
-from telegram import Update
 from typing import Final
 import logging.handlers
 import logging
+import os
+from dotenv import load_dotenv
 
+from telegram import Update
 from telegram.ext import (
     Application,
     ContextTypes,
@@ -12,14 +14,24 @@ from telegram.ext import (
     CommandHandler,
 )
 
-from bspu_profcom_bot_hayeu.router import handlers
-from bspu_profcom_bot_hayeu import context, constants
+from bspu_profcom_bot_hayeu import handlers, models, context, constants
+from bspu_profcom_bot_hayeu.actions import ACTIONS
+from bspu_profcom_bot_hayeu.views import VIEWS
+from bspu_profcom_bot_hayeu.data_loader import DataLoader
 from bspu_profcom_bot_hayeu.db.database import setup_sqlite_db
 
 
-# TODO: Fill in with loading in JSON data
 async def post_init(app: Application):
-    pass
+    assert isinstance(app.bot_data, context.BotContext)
+
+    app.bot_data.actions = ACTIONS
+    app.bot_data.views = VIEWS
+
+    app.bot_data.buttons = DataLoader("button_loader", str(constants.TextPath))["buttons"].__dict__
+    app.bot_data.texts = models.Text.load(str(constants.TextPath), "messages")
+    app.bot_data.keyboards = models.Keyboard.load(
+        str(constants.KeyboardsPath), app.bot_data.actions.__dict__
+    )
 
 
 async def post_shutdown(app: Application):
@@ -49,23 +61,14 @@ if __name__ == "__main__":
     logging.getLogger("aiosqlite").setLevel(logging.WARNING)
     logging.getLogger("telegram.ext").setLevel(logging.INFO)
 
-    # Bot config
-    # config.ini has comments that start with "#"
-    # The first two non-empty non-comment lines should contain
-    #   1) Telegram bot token
-    #   2) Telegram bot handle
-    # EXAMPLE:
-    #   123456789:AAHfiqksKZ8WmR2zSjiQ7_v4TMAKdiHm9T0
-    #   @examplebot
-    with open(constants.ConfigPath, encoding="utf-8") as config:
-        data = config.read().splitlines(keepends=False)
-        data = [line for line in data if not (line.startswith("#") or line == "" or line.isspace())]
-
-        TOKEN: Final = data[0]
-        BOT_USERNAME: Final = data[1]
-
     # Bot setup
     logging.info("Starting up")
+
+    if not load_dotenv():
+        raise RuntimeError(".env not found!")
+
+    TOKEN: Final = os.getenv("TOKEN")
+    assert TOKEN is not None
 
     setup_sqlite_db()
 
@@ -98,5 +101,3 @@ if __name__ == "__main__":
 
     logging.info("Beginning to poll")
     app.run_polling(poll_interval=0.1, allowed_updates=Update.ALL_TYPES, close_loop=False)
-
-    # TODO: Research Pydantic, check if it could be useful in models
