@@ -5,7 +5,7 @@ import hashlib
 
 import aiosqlite
 
-from bspu_profcom_bot_hayeu.db.database import _connect
+from bspu_profcom_bot_hayeu.db.connect import conn_params
 from bspu_profcom_bot_hayeu import constants
 
 
@@ -54,7 +54,7 @@ class Department:
             in_db=False,
         )
 
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             await conn.execute(
                 (
                     f"INSERT INTO {constants.AdminTable} VALUES (:id, :public_name, :user_id, :password_hash, :flags)"
@@ -67,14 +67,14 @@ class Department:
     @staticmethod
     async def pull(id: str) -> Department | None:
         """Reads a question from db"""
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.DepartmentsTable} WHERE id=:id LIMIT 1", {"id": id}
             )
             return Department.from_row(await cursor.fetchone())
 
     async def is_used(self: Self) -> bool:
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 """SELECT EXISTS("""
                 """     SELECT 1"""
@@ -83,14 +83,14 @@ class Department:
                 """)""",
                 {"id": self.id},
             )
-        return bool(await cursor.fetchone())
+            return bool(await cursor.fetchone())
 
     async def set_plan_removal(self: Self, b: bool) -> Department:
         if self.plan_removal == b:
             return self
 
         if self.in_db:
-            async with _connect() as conn:
+            async with aiosqlite.connect(*conn_params) as conn:
                 await conn.execute(
                     f""" UPDATE {constants.DepartmentsTable}"""
                     """ SET plan_removal = :b"""
@@ -105,7 +105,7 @@ class Department:
         if not self.in_db:
             return self
 
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             await conn.execute(
                 f"DELETE FROM {constants.DepartmentsTable} WHERE id=:id",
                 {"id": self.id},

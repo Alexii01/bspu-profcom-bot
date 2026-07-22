@@ -1,6 +1,9 @@
 import json
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from _typeshed import FileDescriptorOrPath
 from collections import UserDict
 
 logger = logging.getLogger(__name__)
@@ -12,7 +15,7 @@ class DataLoader(UserDict):
     def __init__(
         self,
         name: str,
-        filepath: str,
+        filepath: FileDescriptorOrPath,
         new_data: Dict[Any, Any] = {},
         *args,
         **kwargs,

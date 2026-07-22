@@ -1,11 +1,7 @@
-from typing import Mapping, Callable, Coroutine, Any
+from typing import Mapping
 from types import MappingProxyType
 
-from telegram import Update
-
-from bspu_profcom_bot_hayeu.context import BspuContext
-
-Callback = Callable[[Update, BspuContext], Coroutine[Any, Any, None]]
+from bspu_profcom_bot_hayeu.callback import Callback
 
 
 class CallbackRegistry:

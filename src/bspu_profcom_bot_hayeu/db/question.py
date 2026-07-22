@@ -6,7 +6,7 @@ import dataclasses
 import aiosqlite
 
 from bspu_profcom_bot_hayeu import constants
-from bspu_profcom_bot_hayeu.db.database import _connect
+from bspu_profcom_bot_hayeu.db.connect import conn_params
 
 
 def _optional(value, fn):
@@ -100,7 +100,7 @@ class Question:
     @staticmethod
     async def pull(id: UUID) -> Question | None:
         """Reads a question from db"""
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.QuestionsTable} WHERE id=:id LIMIT 1", {"id": str(id)}
             )
@@ -108,16 +108,16 @@ class Question:
 
     @staticmethod
     async def pull_from_user(user_id: int) -> List[Question]:
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 (f"SELECT * FROM {constants.QuestionsTable} WHERE user_id=:user_id"),
                 {"user_id": user_id},
             )
-        return Question.from_rows(await cursor.fetchall())
+            return Question.from_rows(await cursor.fetchall())
 
     @staticmethod
     async def _pull_oldest() -> Question | None:
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 f"""
                     SELECT *
@@ -126,11 +126,11 @@ class Question:
                     ASC LIMIT 1
                     """,
             )
-        return Question.from_row(await cursor.fetchone())
+            return Question.from_row(await cursor.fetchone())
 
     @staticmethod
     async def _pull_oldest_from_dept(dept: UUID) -> Question | None:
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 f"""
                     SELECT *
@@ -141,11 +141,11 @@ class Question:
                     """,
                 {"dept": str(dept)},
             )
-        return Question.from_row(await cursor.fetchone())
+            return Question.from_row(await cursor.fetchone())
 
     @staticmethod
     async def _pull_oldest_except(ids: List[UUID]) -> Question | None:
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 """
                         SELECT *
@@ -156,11 +156,11 @@ class Question:
                         """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
                 [str(id) for id in ids],
             )
-        return Question.from_row(await cursor.fetchone())
+            return Question.from_row(await cursor.fetchone())
 
     @staticmethod
     async def _pull_oldest_from_dept_except(dept: UUID, ids: List[UUID]) -> Question | None:
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 """
                         SELECT *
@@ -171,7 +171,7 @@ class Question:
                         """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
                 [str(dept)] + [str(id) for id in ids],
             )
-        return Question.from_row(await cursor.fetchone())
+            return Question.from_row(await cursor.fetchone())
 
     @staticmethod
     async def pull_oldest(
@@ -189,7 +189,7 @@ class Question:
 
     @staticmethod
     async def delete_by_id(id: UUID):
-        async with _connect() as conn:
+        async with aiosqlite.connect(*conn_params) as conn:
             await conn.execute(
                 (f"DELETE FROM {constants.QuestionsTable} WHERE id=:id"), {"id": str(id)}
             )
@@ -197,7 +197,7 @@ class Question:
     async def insert(question: Self) -> Question:
         """Insert question into database"""
         if not question.in_db:
-            async with _connect() as conn:
+            async with aiosqlite.connect(*conn_params) as conn:
                 await conn.execute(
                     f"""INSERT INTO {constants.QuestionsTable} VALUES"""
                     """(:id, :user_id, :department_id, :asked_date, :answered_by, """
@@ -209,7 +209,7 @@ class Question:
 
     async def redirect(self: Self, dept: UUID) -> Question:
         if self.in_db:
-            async with _connect() as conn:
+            async with aiosqlite.connect(*conn_params) as conn:
                 await conn.execute(
                     (f"UPDATE {constants.QuestionsTable} SET department=:dept WHERE id=:id"),
                     {

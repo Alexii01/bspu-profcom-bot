@@ -1,9 +1,24 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from _typeshed import FileDescriptorOrPath
 
 from telegram.constants import ParseMode
 
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
+
+
+def _resolve_parse_mode(value: Dict[str, str]) -> ParseMode | None:
+    match value["parse_mode"]:
+        case "html":
+            return ParseMode.HTML
+        case "markdownv2":
+            return ParseMode.MARKDOWN_V2
+        case None:
+            return None
+        case _:
+            raise ValueError("Wrong parse_mode")
 
 
 @dataclass
@@ -13,14 +28,14 @@ class Text:
     expected_variables: List[str] | None
 
     @staticmethod
-    def load(filepath: str, path: str | None = None) -> Dict[str, Text]:
+    def load(filepath: FileDescriptorOrPath, path: str | None = None) -> Dict[str, Text]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
         Example: `Text.load("appdata.json", "application.messages.text")`"""
 
         loader = DataLoader("message_loader", filepath)
         return {
-            key: Text(value["text"], value["parse_mode"], value["expected_variables"])
+            key: Text(value["text"], value.get("parse_mode", None), value["expected_variables"])
             for key, value in loader[path].items()
         }
 

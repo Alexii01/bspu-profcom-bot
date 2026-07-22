@@ -5,6 +5,7 @@
 persistence*
 *.json*
 *.log*
+*.txt*
 *.ini*
 *.env*
 *.bin*
