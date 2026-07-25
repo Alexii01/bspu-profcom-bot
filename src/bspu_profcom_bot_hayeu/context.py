@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Mapping, Literal, Dict, List
+from typing import Mapping, Literal, Dict, List, Any
 from json import JSONEncoder
 import functools
 
@@ -24,11 +24,19 @@ class BotContext:
     actions: Mapping[str, Callback] = field(default_factory=dict)
     views: Mapping[str, Callback] = field(default_factory=dict)
     # Message-managing
-    token_store: Dict[str, str] = field(default_factory=dict)
+    token_store: Dict[str, Callback] = field(default_factory=dict)
     # Admin stuff
     reserved_questions: set[Question] = field(default_factory=set)
     # Maintainer stuff
     error_logs: List[str] = field(default_factory=list)
+
+    def view_or_action(self, name: str):
+        value = self.actions.get(name, self.views.get(name, None))
+
+        if value:
+            return value
+        else:
+            raise ValueError(f'Trying to access nonexistent view/action: "{name}"')
 
 
 @dataclass
@@ -37,7 +45,9 @@ class ChatContext:
     last_messages: List[Message] = field(default_factory=list)
     last_keyboard_type: Literal["inline", "reply"] | None = None
     input_parser: Callback | None = None
-    token_store: Dict[str, str] = field(default_factory=dict)
+    token_store: Dict[str, Callback] = field(default_factory=dict)
+    # Context-managing
+    apply_after_update: Dict[str, Any | None] = field(default_factory=dict)
     # Admin menu
     user: Admin | None = None
     representing_department: str | None = None
@@ -71,6 +81,7 @@ class ChatContext:
         self.keyboard_clear()
         self.admin_clear()
         self.question_clear()
+        self.apply_after_update.clear()
 
 
 class BspuContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):

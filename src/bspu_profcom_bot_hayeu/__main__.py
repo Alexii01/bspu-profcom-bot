@@ -14,29 +14,9 @@ from telegram.ext import (
     CommandHandler,
 )
 
-from bspu_profcom_bot_hayeu import handlers, models, context, constants
 from bspu_profcom_bot_hayeu.db.database import setup_sqlite_db
-from bspu_profcom_bot_hayeu.data_loader import DataLoader
-from bspu_profcom_bot_hayeu.actions import ACTIONS
-from bspu_profcom_bot_hayeu.views import VIEWS
-
-
-async def post_init(app: Application):
-    assert isinstance(app.bot_data, context.BotContext)
-
-    app.bot_data.actions = dict(ACTIONS)
-    app.bot_data.views = dict(VIEWS)
-
-    app.bot_data.buttons = DataLoader("button_loader", constants.TextPath)["buttons"]
-    app.bot_data.buttons_inv = {v: k for k, v in app.bot_data.buttons.items()}
-    app.bot_data.texts = models.Text.load(constants.TextPath, "messages")
-    app.bot_data.keyboards = models.Keyboard.load(
-        constants.KeyboardsPath, app.bot_data.actions, app.bot_data.views
-    )
-
-
-async def post_shutdown(app: Application):
-    pass
+from bspu_profcom_bot_hayeu import handlers, context, constants
+from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init, post_shutdown
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import traceback
 import json
 import logging
@@ -8,6 +8,7 @@ from telegram import Update
 from bspu_profcom_bot_hayeu.context import BspuContext, BotContextEncoder, ChatContextEncoder
 from bspu_profcom_bot_hayeu.views import main_menu, error
 from bspu_profcom_bot_hayeu.callback import Callback
+from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init
 
 
 def _retrieve_callback_action(context: BspuContext, data: str) -> Callback:
@@ -15,11 +16,10 @@ def _retrieve_callback_action(context: BspuContext, data: str) -> Callback:
         assert context.chat_data is not None
 
     if context.chat_data.token_store:
-        action_name = context.chat_data.token_store[data]
-        context.chat_data.token_store.clear()
-        return context.bot_data.actions[action_name]
+        context.chat_data.apply_after_update["token_store"] = {}
+        return context.chat_data.token_store[data]
     else:
-        return context.bot_data.actions[context.bot_data.token_store[data]]
+        return context.bot_data.token_store[data]
 
 
 async def callback_handler(update: Update, context: BspuContext):
@@ -34,16 +34,12 @@ async def callback_handler(update: Update, context: BspuContext):
     await action(update, context)
 
 
-def _pop(obj, name: str) -> Any | None:
-    value = getattr(obj, name)
-    setattr(obj, name, None)
-    return value
-
-
 async def message_handler(update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert update.message is not None
         assert context.chat_data is not None
+
+    context.chat_data.apply_after_update["input_parser"] = None
 
     match update.message.text:
         case "start":
@@ -63,9 +59,11 @@ async def message_handler(update: Update, context: BspuContext):
             context.chat_data.full_clear()
             await error.programmer_error(update, context, "Cleared chat_data")
             return
+        case "reload":
+            await post_init(context.application)
+            return
 
-    parser: Callback | None = _pop(context.chat_data, "input_parser")
-    context.chat_data.keyboard_clear()
+    parser: Callback | None = getattr(context.chat_data, "input_parser", None)
 
     if parser:
         await parser(update, context)
@@ -130,4 +128,10 @@ async def error_handler(update: object | None, context: BspuContext):
     context.bot_data.error_logs.append(_err_str(update, context))
 
     # TODO: Add a reminder for the developer about the message
-    await error.programmer_error(update, context, "Caught by error_handler (i.e. uncaught)")
+    if TYPE_CHECKING:
+        assert context.error is not None
+    await error.programmer_error(
+        update,
+        context,
+        f"{type(context.error).__name__}({context.error})\n(Caught by error_handler, i.e. uncaught)",
+    )

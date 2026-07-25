@@ -54,7 +54,7 @@ class Keyboard(NamedTuple):
 
     def __gen_inline_keyboard(
         self, buttons_text: Dict[str, str]
-    ) -> Tuple[InlineKeyboardMarkup, Dict[str, str]]:
+    ) -> Tuple[InlineKeyboardMarkup, Dict[str, Callback]]:
         representation = {
             key: hashlib.sha256(buttons_text[key].encode("utf-8")).hexdigest()
             for key in self.buttons.keys()
@@ -67,12 +67,12 @@ class Keyboard(NamedTuple):
                     for key in self.buttons.keys()
                 ]
             ),
-            {v: k for k, v in representation.items()},
+            {v: self.buttons[k] for k, v in representation.items()},
         )
 
     def __call__(
         self, buttons: Dict[str, str]
-    ) -> ReplyKeyboardMarkup | Tuple[InlineKeyboardMarkup, Dict[str, str]]:
+    ) -> ReplyKeyboardMarkup | Tuple[InlineKeyboardMarkup, Dict[str, Callback]]:
         if self.type == "inline":
             return self.__gen_inline_keyboard(buttons)
         else:
