@@ -2,7 +2,6 @@ from typing import NamedTuple, Literal, Tuple, Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from _typeshed import FileDescriptorOrPath
-from functools import partial
 import hashlib
 
 from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
@@ -37,7 +36,7 @@ class Keyboard(NamedTuple):
     ) -> Dict[str, Keyboard]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
-        Example: `Keyboard.load("appdata.json", "application.keyboards")`"""
+        Example: `Keyboard.load("appdata.json", actions, views, "application.keyboards")`"""
 
         loader = DataLoader("keyboard_loader", filepath)
         return {

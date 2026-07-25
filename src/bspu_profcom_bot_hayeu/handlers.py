@@ -5,36 +5,9 @@ import logging
 
 from telegram import Update
 
-from bspu_profcom_bot_hayeu.context import (
-    BspuContext,
-    BotContext,
-    ChatContext,
-)
+from bspu_profcom_bot_hayeu.context import BspuContext, BotContextEncoder, ChatContextEncoder
 from bspu_profcom_bot_hayeu.views import main_menu, error
 from bspu_profcom_bot_hayeu.callback import Callback
-
-
-class BotContextEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, BotContext):
-            return {
-                "reserved_questions": len(obj.reserved_questions),
-                "error_logs": len(obj.error_logs),
-            }
-
-        return super().default(obj)
-
-
-class ChatContextEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, ChatContext):
-            return {
-                "last_messages": len(obj.last_messages),
-                "last_keyboard_type": obj.last_keyboard_type,
-                "token_store": obj.token_store,
-                "user": str(obj.user.id) if obj.user else None,
-                "representing_department": obj.representing_department,
-            }
 
 
 def _retrieve_callback_action(context: BspuContext, data: str) -> Callback:
@@ -72,20 +45,35 @@ async def message_handler(update: Update, context: BspuContext):
         assert update.message is not None
         assert context.chat_data is not None
 
-    context.chat_data.last_keyboard_type = None
-
     match update.message.text:
         case "start":
             await start_command(update, context)
+            return
         case "admin":
             await admin_command(update, context)
+            return
+        case "ctx":
+            await error.programmer_error(
+                update,
+                context,
+                "Not an actual error, just displaying context",
+            )
+            return
+        case "clear":
+            context.chat_data.full_clear()
+            await error.programmer_error(update, context, "Cleared chat_data")
+            return
 
     parser: Callback | None = _pop(context.chat_data, "input_parser")
+    context.chat_data.keyboard_clear()
 
     if parser:
         await parser(update, context)
     else:
-        await error.programmer_error(update, context)
+        # TODO: Add an error view which returns user to main menu
+        await error.programmer_error(
+            update, context, "Unexpected text input. No input_parser found."
+        )
 
 
 async def start_command(update: Update, context: BspuContext):
@@ -142,4 +130,4 @@ async def error_handler(update: object | None, context: BspuContext):
     context.bot_data.error_logs.append(_err_str(update, context))
 
     # TODO: Add a reminder for the developer about the message
-    await error.unknown_error(update, context)
+    await error.programmer_error(update, context, "Caught by error_handler (i.e. uncaught)")

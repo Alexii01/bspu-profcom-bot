@@ -2,8 +2,8 @@ from typing import Final
 import logging.handlers
 import logging
 import os
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -15,10 +15,10 @@ from telegram.ext import (
 )
 
 from bspu_profcom_bot_hayeu import handlers, models, context, constants
+from bspu_profcom_bot_hayeu.db.database import setup_sqlite_db
+from bspu_profcom_bot_hayeu.data_loader import DataLoader
 from bspu_profcom_bot_hayeu.actions import ACTIONS
 from bspu_profcom_bot_hayeu.views import VIEWS
-from bspu_profcom_bot_hayeu.data_loader import DataLoader
-from bspu_profcom_bot_hayeu.db.database import setup_sqlite_db
 
 
 async def post_init(app: Application):

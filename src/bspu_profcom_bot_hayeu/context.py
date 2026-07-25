@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Mapping, Literal, Dict, List
+from json import JSONEncoder
+import functools
 
 from telegram import Message
 from telegram.ext import (
@@ -48,6 +50,8 @@ class ChatContext:
 
     def msg_clear(self):
         self.last_messages.clear()
+
+    def keyboard_clear(self):
         self.last_keyboard_type = None
         self.input_parser = None
         self.token_store.clear()
@@ -64,6 +68,7 @@ class ChatContext:
 
     def full_clear(self):
         self.msg_clear()
+        self.keyboard_clear()
         self.admin_clear()
         self.question_clear()
 
@@ -71,3 +76,40 @@ class ChatContext:
 class BspuContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     def __init__(self, application, chat_id=None, user_id=None):
         super().__init__(application, chat_id, user_id)
+
+
+class BotContextEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, BotContext):
+            return {
+                "reserved_questions": len(obj.reserved_questions),
+                "error_logs": len(obj.error_logs),
+            }
+
+        return super().default(obj)
+
+
+class ChatContextEncoder(JSONEncoder):
+    def _input_parser_to_str(self, obj):
+        if isinstance(obj, ChatContext):
+            if obj.input_parser:
+                return getattr(
+                    obj.input_parser,
+                    "__name__",
+                    repr(obj.input_parser)
+                    if not isinstance(obj.input_parser, functools.partial)
+                    else getattr(obj.input_parser.func, "__name__", "Partial with unknown origin"),
+                )
+            else:
+                return None
+
+    def default(self, obj):
+        if isinstance(obj, ChatContext):
+            return {
+                "last_messages": len(obj.last_messages),
+                "last_keyboard_type": obj.last_keyboard_type,
+                "input_parser": self._input_parser_to_str(obj),
+                "token_store": obj.token_store,
+                "user": str(obj.user.id) if obj.user else None,
+                "representing_department": obj.representing_department,
+            }
