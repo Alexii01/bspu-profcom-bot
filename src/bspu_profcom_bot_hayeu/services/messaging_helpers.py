@@ -1,10 +1,10 @@
-from typing import Dict, Any, TYPE_CHECKING
 from functools import partial
+from typing import TYPE_CHECKING, Any
 
 from telegram import (
-    Update,
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
+    Update,
 )
 
 from bspu_profcom_bot_hayeu.context import BspuContext
@@ -17,7 +17,7 @@ async def _reply_keyboard_input_parser(keyboard: Keyboard, update: Update, conte
         assert update.message is not None
         assert update.message.text is not None
 
-    btns = [context.bot_data.buttons[btn_name] for btn_name in keyboard.buttons.keys()]
+    btns = [context.bot_data.buttons[btn_name] for btn_name in keyboard.buttons]
     if update.message.text in btns:
         await keyboard.buttons[context.bot_data.buttons_inv[update.message.text]](update, context)
     else:
@@ -51,7 +51,7 @@ def _resolve_keyboard(
 
 
 def _log_one_time_keyboard(
-    context: BspuContext, keyboard: Keyboard, buttons: Dict[str, str]
+    context: BspuContext, keyboard: Keyboard, buttons: dict[str, str]
 ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
     if TYPE_CHECKING:
         assert context.chat_data is not None
@@ -71,7 +71,7 @@ def _set_kwargs_defaults(
     context: BspuContext,
     text_alias: str | None,
     keyboard_alias: str | None,
-    kwargs: Dict[str, Any],
+    kwargs: dict[str, Any],
 ):
     if TYPE_CHECKING:
         assert update.effective_user is not None

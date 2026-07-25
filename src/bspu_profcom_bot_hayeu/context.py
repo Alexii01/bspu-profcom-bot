@@ -1,7 +1,8 @@
-from dataclasses import dataclass, field
-from typing import Mapping, Literal, Dict, List, Any
-from json import JSONEncoder
 import functools
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from json import JSONEncoder
+from typing import Any, Literal
 
 from telegram import Message
 from telegram.ext import (
@@ -9,54 +10,46 @@ from telegram.ext import (
     ExtBot,
 )
 
-from bspu_profcom_bot_hayeu.models import Text, Keyboard
-from bspu_profcom_bot_hayeu.db import Question, Admin
 from bspu_profcom_bot_hayeu.callback import Callback
+from bspu_profcom_bot_hayeu.db import Admin, Question
+from bspu_profcom_bot_hayeu.models import Keyboard, Text
 
 
 @dataclass
 class BotContext:
     # Magic
-    texts: Dict[str, Text] = field(default_factory=dict)
-    buttons: Dict[str, str] = field(default_factory=dict)
-    buttons_inv: Dict[str, str] = field(default_factory=dict)
-    keyboards: Dict[str, Keyboard] = field(default_factory=dict)
+    texts: dict[str, Text] = field(default_factory=dict)
+    buttons: dict[str, str] = field(default_factory=dict)
+    buttons_inv: dict[str, str] = field(default_factory=dict)
+    keyboards: dict[str, Keyboard] = field(default_factory=dict)
     actions: Mapping[str, Callback] = field(default_factory=dict)
     views: Mapping[str, Callback] = field(default_factory=dict)
     # Message-managing
-    token_store: Dict[str, Callback] = field(default_factory=dict)
+    token_store: dict[str, Callback] = field(default_factory=dict)
     # Admin stuff
     reserved_questions: set[Question] = field(default_factory=set)
     # Maintainer stuff
-    error_logs: List[str] = field(default_factory=list)
-
-    def view_or_action(self, name: str):
-        value = self.actions.get(name, self.views.get(name, None))
-
-        if value:
-            return value
-        else:
-            raise ValueError(f'Trying to access nonexistent view/action: "{name}"')
+    error_logs: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ChatContext:
     # Message-managing
-    last_messages: List[Message] = field(default_factory=list)
+    last_messages: list[Message] = field(default_factory=list)
     last_keyboard_type: Literal["inline", "reply"] | None = None
     input_parser: Callback | None = None
-    token_store: Dict[str, Callback] = field(default_factory=dict)
+    token_store: dict[str, Callback] = field(default_factory=dict)
     # Context-managing
-    apply_after_update: Dict[str, Any | None] = field(default_factory=dict)
+    apply_after_update: dict[str, Any | None] = field(default_factory=dict)
     # Admin menu
     user: Admin | None = None
     representing_department: str | None = None
     answering_question: Question | None = None
-    skip_questions: List[Question] = field(default_factory=list)
+    skip_questions: list[Question] = field(default_factory=list)
     # Question menu
     asking_department: str | None = None
     viewing_question: Question | None = None
-    asked_questions: List[Question] = field(default_factory=list)
+    asked_questions: list[Question] = field(default_factory=list)
 
     def msg_clear(self):
         self.last_messages.clear()

@@ -1,14 +1,14 @@
-from typing import TYPE_CHECKING
-import inspect
 import html
+import inspect
 import json
-import copy
+from typing import TYPE_CHECKING
 
-from telegram import Update, constants as telegram_constants
+from telegram import Update
+from telegram import constants as telegram_constants
 
+from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.context import BspuContext, ChatContextEncoder
 from bspu_profcom_bot_hayeu.services import messaging
-from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 
 cr = CallbackRegistry()
 

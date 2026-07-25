@@ -2,17 +2,20 @@ from typing import TYPE_CHECKING
 
 from telegram import (
     Message,
-    Update,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
+    Update,
+)
+from telegram import (
     error as telegram_error,
 )
 from telegram.constants import ParseMode
 
 from bspu_profcom_bot_hayeu.context import BspuContext
+
 from .messaging_helpers import (
-    _set_kwargs_defaults,
     _apply_context_update,
+    _set_kwargs_defaults,
 )
 
 

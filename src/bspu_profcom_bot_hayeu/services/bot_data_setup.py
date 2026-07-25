@@ -1,8 +1,8 @@
 from telegram.ext import Application
 
-from bspu_profcom_bot_hayeu import models, context, constants
-from bspu_profcom_bot_hayeu.data_loader import DataLoader
+from bspu_profcom_bot_hayeu import constants, context, models
 from bspu_profcom_bot_hayeu.actions import ACTIONS
+from bspu_profcom_bot_hayeu.data_loader import DataLoader
 from bspu_profcom_bot_hayeu.views import VIEWS
 
 

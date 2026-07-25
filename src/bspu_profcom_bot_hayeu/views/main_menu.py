@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING
 
 from telegram import Update
 
+from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.context import BspuContext
 from bspu_profcom_bot_hayeu.services import messaging
-from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 
 cr = CallbackRegistry()
 

@@ -1,14 +1,15 @@
 import dataclasses
-from uuid import UUID, uuid4
-from typing import Iterable, Dict, Tuple, Any
 import string
+from collections.abc import Iterable
+from typing import Any
+from uuid import UUID, uuid4
 
-import bcrypt
 import aiosqlite
+import bcrypt
 
 from bspu_profcom_bot_hayeu import constants
-from bspu_profcom_bot_hayeu.services import password
 from bspu_profcom_bot_hayeu.db.connect import conn_params
+from bspu_profcom_bot_hayeu.services import password
 
 
 @dataclasses.dataclass(frozen=True)
@@ -40,7 +41,7 @@ class Admin:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @staticmethod
-    def _from_row_with_passwd_hash(row: aiosqlite.Row) -> Tuple[Admin, bytes]:
+    def _from_row_with_passwd_hash(row: aiosqlite.Row) -> tuple[Admin, bytes]:
         return (
             Admin(
                 id=UUID(row["id"]),
@@ -71,7 +72,7 @@ class Admin:
         return [Admin._from_row(row) for row in rows]
 
     @staticmethod
-    def to_row(admin: Admin) -> Dict[str, Any]:
+    def to_row(admin: Admin) -> dict[str, Any]:
         return {
             "id": str(admin.id),
             "public_name": admin.public_name,
@@ -84,12 +85,13 @@ class Admin:
         *,
         public_name: str | None = None,
         name_base: str = "",
-        flags: constants.AdminFlags = constants.AdminFlags(0),
-    ) -> Tuple[Admin, str]:
+        flags: constants.AdminFlags | None = None,
+    ) -> tuple[Admin, str]:
         """Generates a password and initialises the fields with default values,
         then INSERTs into db.
         """
         passw = password.new(3, 6)
+        flags = flags or constants.AdminFlags(0)
 
         instance = Admin(
             id=uuid4(),
@@ -160,7 +162,7 @@ class Admin:
     async def unauthorised_with_passwd(password: str) -> Admin | None:
         async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
-                (f"SELECT * FROM {constants.AdminTable} WHERE user_id IS NULL")
+                f"SELECT * FROM {constants.AdminTable} WHERE user_id IS NULL"
             )
             async for row in cursor:
                 if bcrypt.checkpw(password.encode("ascii"), row["password_hash"]):

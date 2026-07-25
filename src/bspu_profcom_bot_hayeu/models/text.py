@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from _typeshed import FileDescriptorOrPath
@@ -9,7 +9,7 @@ from telegram.constants import ParseMode
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
 
 
-def _resolve_parse_mode(value: Dict[str, str]) -> ParseMode | None:
+def _resolve_parse_mode(value: dict[str, str]) -> ParseMode | None:
     match value["parse_mode"]:
         case "html":
             return ParseMode.HTML
@@ -25,10 +25,10 @@ def _resolve_parse_mode(value: Dict[str, str]) -> ParseMode | None:
 class Text:
     _text: str
     parse_mode: ParseMode | None
-    expected_variables: List[str] | None
+    expected_variables: list[str] | None
 
     @staticmethod
-    def load(filepath: FileDescriptorOrPath, path: str | None = None) -> Dict[str, Text]:
+    def load(filepath: FileDescriptorOrPath, path: str | None = None) -> dict[str, Text]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
         Example: `Text.load("appdata.json", "application.messages.text")`"""
@@ -42,9 +42,7 @@ class Text:
     def __verify_variables(self, vars: dict) -> bool:
         """Checks if the provided dictionary contains all object needed to fill in the template"""
 
-        return not self.expected_variables or all(
-            var in vars.keys() for var in self.expected_variables
-        )
+        return not self.expected_variables or all(var in vars for var in self.expected_variables)
 
     def __call__(self, vars: dict | None = None) -> str:
         # Template not applicable -> return text

@@ -1,12 +1,11 @@
+import asyncio
 import logging
 
 import aiosqlite
-import asyncio
-
-from bspu_profcom_bot_hayeu.db import Admin
-from bspu_profcom_bot_hayeu.db.connect import conn_params
 
 from bspu_profcom_bot_hayeu import constants
+from bspu_profcom_bot_hayeu.db import Admin
+from bspu_profcom_bot_hayeu.db.connect import conn_params
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ async def __create_super_maintainer_if_not_present():
     # Create super admin
     [_, password] = await Admin.new(public_name=None, name_base="Новый админ ", flags=None)
     # Save the password for future reference
-    with open(constants.Tmp, mode="w") as file:
+    with open(constants.Tmp, mode="w") as file:  # noqa: ASYNC230
         file.write(password)
 
 

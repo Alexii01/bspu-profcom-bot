@@ -1,23 +1,22 @@
-from typing import Final
-import logging.handlers
 import logging
+import logging.handlers
 import os
+from typing import Final
 
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
     Application,
-    ContextTypes,
-    PicklePersistence,
     CallbackQueryHandler,
-    MessageHandler,
     CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    PicklePersistence,
 )
 
+from bspu_profcom_bot_hayeu import constants, context, handlers
 from bspu_profcom_bot_hayeu.db.database import setup_sqlite_db
-from bspu_profcom_bot_hayeu import handlers, context, constants
 from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init, post_shutdown
-
 
 if __name__ == "__main__":
     # Logging config

@@ -1,12 +1,12 @@
-from typing import Iterable, Self, Dict, Any
 import dataclasses
 import hashlib
-
+from collections.abc import Iterable
+from typing import Any, Self
 
 import aiosqlite
 
-from bspu_profcom_bot_hayeu.db.connect import conn_params
 from bspu_profcom_bot_hayeu import constants
+from bspu_profcom_bot_hayeu.db.connect import conn_params
 
 
 @dataclasses.dataclass(frozen=True)
@@ -28,8 +28,8 @@ class Department:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @staticmethod
-    def to_row(self: Department) -> Dict[str, Any]:
-        return {"id": self.id, "name": self.name, "plan_removal": self.plan_removal}
+    def to_row(dept: Department) -> dict[str, Any]:
+        return {"id": dept.id, "name": dept.name, "plan_removal": dept.plan_removal}
 
     @staticmethod
     def _from_row(row: aiosqlite.Row) -> Department:

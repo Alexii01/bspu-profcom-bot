@@ -1,14 +1,14 @@
-from typing import TYPE_CHECKING
-import traceback
 import json
 import logging
+import traceback
+from typing import TYPE_CHECKING
 
 from telegram import Update
 
-from bspu_profcom_bot_hayeu.context import BspuContext, BotContextEncoder, ChatContextEncoder
-from bspu_profcom_bot_hayeu.views import main_menu, error
 from bspu_profcom_bot_hayeu.callback import Callback
+from bspu_profcom_bot_hayeu.context import BotContextEncoder, BspuContext, ChatContextEncoder
 from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init
+from bspu_profcom_bot_hayeu.views import error, main_menu
 
 
 def _retrieve_callback_action(context: BspuContext, data: str) -> Callback:

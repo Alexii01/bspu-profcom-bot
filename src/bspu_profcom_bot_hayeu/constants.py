@@ -1,5 +1,5 @@
-from pathlib import Path
 from enum import IntFlag
+from pathlib import Path
 
 MODULE_DIR = Path(__file__).resolve().parent.parent
 DATA_PREFIX = MODULE_DIR.parent / "data"

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from _typeshed import FileDescriptorOrPath
@@ -16,14 +16,14 @@ class DataLoader(UserDict):
         self,
         name: str,
         filepath: FileDescriptorOrPath,
-        new_data: Dict[Any, Any] = {},
+        new_data: dict[Any, Any] | None = None,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.name = name
         self.associated_file = filepath
-        self.data = new_data
+        self.data = new_data if new_data else {}
 
         if self.associated_file:
             self.load()
@@ -44,7 +44,7 @@ class DataLoader(UserDict):
             logger.info(f"{self.name} dump to {self.associated_file}")
             json.dump(self.data, data_file, indent=2, ensure_ascii=False)
 
-    def __getitem__(self, key: str | None) -> Dict | Any:
+    def __getitem__(self, key: str | None) -> dict | Any:
         """Read nested data as if they're arguments in nested classes.
 
         Example: `loader["parent.intermediate.final"]`"""

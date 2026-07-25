@@ -1,4 +1,5 @@
-from typing import Callable, Coroutine, Any, TYPE_CHECKING
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any
 
 from telegram import Update
 

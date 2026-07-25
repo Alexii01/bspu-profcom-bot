@@ -1,7 +1,8 @@
-from typing import Iterable, Self, Dict, List, Any
-from datetime import datetime
-from uuid import UUID
 import dataclasses
+from collections.abc import Iterable
+from datetime import datetime
+from typing import Any, Self
+from uuid import UUID
 
 import aiosqlite
 
@@ -60,10 +61,10 @@ class Question:
         return Question._from_row(row) if row else None
 
     @staticmethod
-    def from_rows(rows: Iterable[aiosqlite.Row]) -> List[Question]:
+    def from_rows(rows: Iterable[aiosqlite.Row]) -> list[Question]:
         return [Question._from_row(row) for row in rows]
 
-    def to_row(self: Self) -> Dict[str, Any]:
+    def to_row(self: Self) -> dict[str, Any]:
         return {
             "id": str(self.id),
             "user_id": self.user_id,
@@ -107,7 +108,7 @@ class Question:
             return Question.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_from_user(user_id: int) -> List[Question]:
+    async def pull_from_user(user_id: int) -> list[Question]:
         async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 (f"SELECT * FROM {constants.QuestionsTable} WHERE user_id=:user_id"),
@@ -144,7 +145,7 @@ class Question:
             return Question.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def _pull_oldest_except(ids: List[UUID]) -> Question | None:
+    async def _pull_oldest_except(ids: list[UUID]) -> Question | None:
         async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 """
@@ -159,7 +160,7 @@ class Question:
             return Question.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def _pull_oldest_from_dept_except(dept: UUID, ids: List[UUID]) -> Question | None:
+    async def _pull_oldest_from_dept_except(dept: UUID, ids: list[UUID]) -> Question | None:
         async with aiosqlite.connect(*conn_params) as conn:
             cursor = await conn.execute(
                 """
@@ -175,7 +176,7 @@ class Question:
 
     @staticmethod
     async def pull_oldest(
-        dept: UUID | None = None, avoid_ids: List[UUID] | None = None
+        dept: UUID | None = None, avoid_ids: list[UUID] | None = None
     ) -> Question | None:
         """Pulls oldest question"""
         if dept and avoid_ids:

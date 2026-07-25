@@ -1,18 +1,18 @@
-from typing import NamedTuple, Literal, Tuple, Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 if TYPE_CHECKING:
     from _typeshed import FileDescriptorOrPath
 import hashlib
 
-from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 
-from bspu_profcom_bot_hayeu.data_loader import DataLoader
 from bspu_profcom_bot_hayeu.callback import Callback
+from bspu_profcom_bot_hayeu.data_loader import DataLoader
 
 
 def _build_buttons(
-    value: Dict[str, Any], actions: Dict[str, Callback], views: Dict[str, Callback]
-) -> Dict[str, Callback]:
+    value: dict[str, Any], actions: dict[str, Callback], views: dict[str, Callback]
+) -> dict[str, Callback]:
     return {
         button_key: (
             views[button_value["view"]]
@@ -25,15 +25,15 @@ def _build_buttons(
 
 class Keyboard(NamedTuple):
     type: Literal["inline", "reply"]
-    buttons: Dict[str, Callback]
+    buttons: dict[str, Callback]
 
     @staticmethod
     def load(
         filepath: FileDescriptorOrPath,
-        actions: Dict[str, Callback],
-        views: Dict[str, Callback],
+        actions: dict[str, Callback],
+        views: dict[str, Callback],
         path: str | None = None,
-    ) -> Dict[str, Keyboard]:
+    ) -> dict[str, Keyboard]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
         Example: `Keyboard.load("appdata.json", actions, views, "application.keyboards")`"""
@@ -47,32 +47,32 @@ class Keyboard(NamedTuple):
             for key, value in loader[path].items()
         }
 
-    def __gen_reply_keyboard(self, buttons_text: Dict[str, str]) -> ReplyKeyboardMarkup:
+    def __gen_reply_keyboard(self, buttons_text: dict[str, str]) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup.from_column(
-            [buttons_text[key] for key in self.buttons.keys()], one_time_keyboard=True
+            [buttons_text[key] for key in self.buttons], one_time_keyboard=True
         )
 
     def __gen_inline_keyboard(
-        self, buttons_text: Dict[str, str]
-    ) -> Tuple[InlineKeyboardMarkup, Dict[str, Callback]]:
+        self, buttons_text: dict[str, str]
+    ) -> tuple[InlineKeyboardMarkup, dict[str, Callback]]:
         representation = {
             key: hashlib.sha256(buttons_text[key].encode("utf-8")).hexdigest()
-            for key in self.buttons.keys()
+            for key in self.buttons
         }
 
         return (
             InlineKeyboardMarkup.from_column(
                 [
                     InlineKeyboardButton(text=buttons_text[key], callback_data=representation[key])
-                    for key in self.buttons.keys()
+                    for key in self.buttons
                 ]
             ),
             {v: self.buttons[k] for k, v in representation.items()},
         )
 
     def __call__(
-        self, buttons: Dict[str, str]
-    ) -> ReplyKeyboardMarkup | Tuple[InlineKeyboardMarkup, Dict[str, Callback]]:
+        self, buttons: dict[str, str]
+    ) -> ReplyKeyboardMarkup | tuple[InlineKeyboardMarkup, dict[str, Callback]]:
         if self.type == "inline":
             return self.__gen_inline_keyboard(buttons)
         else:
