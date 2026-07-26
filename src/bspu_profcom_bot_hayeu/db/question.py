@@ -7,7 +7,7 @@ from uuid import UUID
 import aiosqlite
 
 from bspu_profcom_bot_hayeu import constants
-from bspu_profcom_bot_hayeu.db.connect import conn_params
+from bspu_profcom_bot_hayeu.db.connect import database as db
 
 
 def _optional(value, fn):
@@ -101,7 +101,8 @@ class Question:
     @staticmethod
     async def pull(id: UUID) -> Question | None:
         """Reads a question from db"""
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.QuestionsTable} WHERE id=:id LIMIT 1", {"id": str(id)}
             )
@@ -109,7 +110,8 @@ class Question:
 
     @staticmethod
     async def pull_from_user(user_id: int) -> list[Question]:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 (f"SELECT * FROM {constants.QuestionsTable} WHERE user_id=:user_id"),
                 {"user_id": user_id},
@@ -118,7 +120,8 @@ class Question:
 
     @staticmethod
     async def _pull_oldest() -> Question | None:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"""
                     SELECT *
@@ -131,7 +134,8 @@ class Question:
 
     @staticmethod
     async def _pull_oldest_from_dept(dept: UUID) -> Question | None:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"""
                     SELECT *
@@ -146,7 +150,8 @@ class Question:
 
     @staticmethod
     async def _pull_oldest_except(ids: list[UUID]) -> Question | None:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 """
                         SELECT *
@@ -161,7 +166,8 @@ class Question:
 
     @staticmethod
     async def _pull_oldest_from_dept_except(dept: UUID, ids: list[UUID]) -> Question | None:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 """
                         SELECT *
@@ -190,27 +196,29 @@ class Question:
 
     @staticmethod
     async def delete_by_id(id: UUID):
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
             await conn.execute(
                 (f"DELETE FROM {constants.QuestionsTable} WHERE id=:id"), {"id": str(id)}
             )
+            await conn.commit()
 
     async def insert(question: Self) -> Question:
         """Insert question into database"""
         if not question.in_db:
-            async with aiosqlite.connect(*conn_params) as conn:
+            async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     f"""INSERT INTO {constants.QuestionsTable} VALUES"""
                     """(:id, :user_id, :department_id, :asked_date, :answered_by, """
                     """:answered_date, :message)""",
                     Question.to_row(question),
                 )
+                await conn.commit()
             dataclasses.replace(question, in_db=True)
         return question
 
     async def redirect(self: Self, dept: UUID) -> Question:
         if self.in_db:
-            async with aiosqlite.connect(*conn_params) as conn:
+            async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     (f"UPDATE {constants.QuestionsTable} SET department=:dept WHERE id=:id"),
                     {
@@ -218,6 +226,7 @@ class Question:
                         "id": str(self.id),
                     },
                 )
+                await conn.commit()
         dataclasses.replace(self, department_id=dept)
         return self
 

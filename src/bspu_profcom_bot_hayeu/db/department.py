@@ -6,7 +6,7 @@ from typing import Any, Self
 import aiosqlite
 
 from bspu_profcom_bot_hayeu import constants
-from bspu_profcom_bot_hayeu.db.connect import conn_params
+from bspu_profcom_bot_hayeu.db.connect import database as db
 
 
 @dataclasses.dataclass(frozen=True)
@@ -42,7 +42,7 @@ class Department:
         return Department._from_row(row) if row else None
 
     @staticmethod
-    async def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable[Department]:
+    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable[Department]:
         return [Department._from_row(row) for row in rows]
 
     @staticmethod
@@ -54,27 +54,37 @@ class Department:
             in_db=False,
         )
 
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
             await conn.execute(
                 (
                     f"INSERT INTO {constants.AdminTable} VALUES (:id, :public_name, :user_id, :password_hash, :flags)"
                 ),
                 instance,
             )
+            await conn.commit()
 
         return instance
 
     @staticmethod
     async def pull(id: str) -> Department | None:
-        """Reads a question from db"""
-        async with aiosqlite.connect(*conn_params) as conn:
+        """Reads a department from db"""
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.DepartmentsTable} WHERE id=:id LIMIT 1", {"id": id}
             )
             return Department.from_row(await cursor.fetchone())
 
+    @staticmethod
+    async def pull_all() -> Iterable[Department]:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
+            cursor = await conn.execute(f"SELECT * FROM {constants.DepartmentsTable}")
+            return Department.from_rows(await cursor.fetchall())
+
     async def is_used(self: Self) -> bool:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 """SELECT EXISTS("""
                 """     SELECT 1"""
@@ -90,13 +100,14 @@ class Department:
             return self
 
         if self.in_db:
-            async with aiosqlite.connect(*conn_params) as conn:
+            async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     f""" UPDATE {constants.DepartmentsTable}"""
                     """ SET plan_removal = :b"""
                     """ WHERE id=:id""",
                     {"id": self.id, "b": self.plan_removal},
                 )
+                await conn.commit()
         dataclasses.replace(self, plan_removal=b)
 
         return self
@@ -105,11 +116,12 @@ class Department:
         if not self.in_db:
             return self
 
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
             await conn.execute(
                 f"DELETE FROM {constants.DepartmentsTable} WHERE id=:id",
                 {"id": self.id},
             )
+            await conn.commit()
         dataclasses.replace(self, in_db=False)
 
         return self

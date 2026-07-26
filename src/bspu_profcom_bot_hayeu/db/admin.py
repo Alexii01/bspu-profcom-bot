@@ -8,7 +8,7 @@ import aiosqlite
 import bcrypt
 
 from bspu_profcom_bot_hayeu import constants
-from bspu_profcom_bot_hayeu.db.connect import conn_params
+from bspu_profcom_bot_hayeu.db.connect import database as db
 from bspu_profcom_bot_hayeu.services import password
 
 
@@ -106,13 +106,14 @@ class Admin:
         admin = Admin.to_row(instance)
         admin["password_hash"] = bcrypt.hashpw(passw.encode("ascii"), bcrypt.gensalt())
 
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
             await conn.execute(
                 (
                     f"INSERT INTO {constants.AdminTable} VALUES (:id, :public_name, :user_id, :password_hash, :flags)"
                 ),
                 admin,
             )
+            await conn.commit()
 
         dataclasses.replace(instance, in_db=True)
 
@@ -121,7 +122,8 @@ class Admin:
     @staticmethod
     async def pull(id: UUID) -> Admin | None:
         """Returns an admin associated with a user"""
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.AdminTable} WHERE id=:id", {"id": str(id)}
             )
@@ -130,7 +132,8 @@ class Admin:
     @staticmethod
     async def pull_by_user_id(user_id: str) -> Admin | None:
         """Returns an admin associated with a user"""
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.AdminTable} WHERE user_id=:user_id", {"user_id": user_id}
             )
@@ -139,7 +142,8 @@ class Admin:
     @staticmethod
     async def pull_by_flags(flags: constants.AdminFlags) -> Iterable[Admin] | None:
         """Returns admins with `flags set`"""
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"""SELECT * FROM {constants.AdminTable}"""
                 """ WHERE (flags & :flags) = :flags""",
@@ -150,7 +154,8 @@ class Admin:
     @staticmethod
     async def pull_without_flags(flags: constants.AdminFlags) -> Iterable[Admin] | None:
         """Returns admins with `flags set`"""
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"""SELECT * FROM {constants.AdminTable}"""
                 """ WHERE (~flags & :flags) = :flags""",
@@ -160,7 +165,8 @@ class Admin:
 
     @staticmethod
     async def unauthorised_with_passwd(password: str) -> Admin | None:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"SELECT * FROM {constants.AdminTable} WHERE user_id IS NULL"
             )
@@ -171,7 +177,8 @@ class Admin:
 
     @staticmethod
     async def names() -> Iterable[str] | None:
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(f"SELECT public_name FROM {constants.AdminTable}")
             return [row[0] for row in (await cursor.fetchall())]
 
@@ -179,7 +186,7 @@ class Admin:
         if self.user_id or not self.in_db:
             return self
         dataclasses.replace(self, user_id=user_id)
-        async with aiosqlite.connect(*conn_params) as conn:
+        async with aiosqlite.connect(db) as conn:
             await conn.execute(
                 f"UPDATE {constants.AdminTable} SET user_id=:user_id WHERE id=:id",
                 {
@@ -187,12 +194,13 @@ class Admin:
                     "id": self.id,
                 },
             )
+            await conn.commit()
         return self
 
     async def rename(self, name: str) -> Admin:
         """Update admin's name in db"""
         if self.in_db:
-            async with aiosqlite.connect(*conn_params) as conn:
+            async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     f"UPDATE {constants.AdminTable} SET public_name=:public_name where id=:id",
                     {
@@ -200,28 +208,31 @@ class Admin:
                         "id": self.id,
                     },
                 )
+                await conn.commit()
         dataclasses.replace(self, public_name=name)
         return self
 
     async def delete(self) -> Admin:
         """Delete admin from db"""
         if self.in_db:
-            async with aiosqlite.connect(*conn_params) as conn:
+            async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     f"DELETE FROM {constants.AdminTable} WHERE id=:id", {"id": self.id}
                 )
+                await conn.commit()
         dataclasses.replace(self, in_db=False)
         return self
 
     async def _update_flags(self):
         if self.in_db:
-            async with aiosqlite.connect(*conn_params) as conn:
+            async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     f""" UPDATE {constants.AdminTable}"""
                     """ SET flags = :flags"""
                     """ WHERE id=?""",
                     {"id": self.id, "flags": int(self.flags)},
                 )
+                await conn.commit()
 
     async def add_flags(self, flags: constants.AdminFlags) -> Admin:
         dataclasses.replace(self, flags=(self.flags | flags))

@@ -5,13 +5,13 @@ import aiosqlite
 
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.db import Admin
-from bspu_profcom_bot_hayeu.db.connect import conn_params
+from bspu_profcom_bot_hayeu.db.connect import database as db
 
 logger = logging.getLogger(__name__)
 
 
 async def __create_tables_if_not_present():
-    async with aiosqlite.connect(*conn_params) as conn:
+    async with aiosqlite.connect(db) as conn:
         await conn.executescript(f"""
             CREATE TABLE IF NOT EXISTS {constants.AdminTable} (
                 id TEXT PRIMARY KEY,
@@ -49,8 +49,13 @@ async def __create_super_maintainer_if_not_present():
     if await __super_maintainer_exists():
         return
 
+    logger.info("No super maintainer found. Creating a new one.")
     # Create super admin
-    [_, password] = await Admin.new(public_name=None, name_base="Новый админ ", flags=None)
+    [_, password] = await Admin.new(
+        public_name=None,
+        name_base="Новый админ ",
+        flags=constants.AdminFlags.IS_SUPER | constants.AdminFlags.IS_MAINTAINER,
+    )
     # Save the password for future reference
     with open(constants.Tmp, mode="w") as file:  # noqa: ASYNC230
         file.write(password)
