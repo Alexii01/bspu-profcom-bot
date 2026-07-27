@@ -91,7 +91,7 @@ class Department:
                 f"""    FROM {constants.QuestionsTable}"""
                 """     WHERE department_id=:id"""
                 """)""",
-                {"id": self.id},
+                {"id": str(self.id)},
             )
             return bool(await cursor.fetchone())
 
@@ -105,12 +105,12 @@ class Department:
                     f""" UPDATE {constants.DepartmentsTable}"""
                     """ SET plan_removal = :b"""
                     """ WHERE id=:id""",
-                    {"id": self.id, "b": self.plan_removal},
+                    {"id": str(self.id), "b": self.plan_removal},
                 )
                 await conn.commit()
-        dataclasses.replace(self, plan_removal=b)
+        new_self = dataclasses.replace(self, plan_removal=b)
 
-        return self
+        return new_self
 
     async def delete(self: Self) -> Department:
         if not self.in_db:
@@ -119,9 +119,9 @@ class Department:
         async with aiosqlite.connect(db) as conn:
             await conn.execute(
                 f"DELETE FROM {constants.DepartmentsTable} WHERE id=:id",
-                {"id": self.id},
+                {"id": str(self.id)},
             )
             await conn.commit()
-        dataclasses.replace(self, in_db=False)
+        new_self = dataclasses.replace(self, in_db=False)
 
-        return self
+        return new_self

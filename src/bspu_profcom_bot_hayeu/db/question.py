@@ -213,8 +213,8 @@ class Question:
                     Question.to_row(question),
                 )
                 await conn.commit()
-            dataclasses.replace(question, in_db=True)
-        return question
+            new_self = dataclasses.replace(question, in_db=True)
+        return new_self
 
     async def redirect(self: Self, dept: UUID) -> Question:
         if self.in_db:
@@ -227,11 +227,11 @@ class Question:
                     },
                 )
                 await conn.commit()
-        dataclasses.replace(self, department_id=dept)
-        return self
+        new_self = dataclasses.replace(self, department_id=dept)
+        return new_self
 
     async def delete(self: Self) -> Question:
         if self.in_db:
             await Question.delete_by_id(self.id)
-            dataclasses.replace(self, in_db=False)
-        return self
+            new_self = dataclasses.replace(self, in_db=False)
+        return new_self

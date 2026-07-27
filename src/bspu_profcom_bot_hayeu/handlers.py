@@ -5,13 +5,17 @@ from typing import TYPE_CHECKING
 
 from telegram import Update
 
+from bspu_profcom_bot_hayeu.actions import admin_menu
 from bspu_profcom_bot_hayeu.callback import Callback
+from bspu_profcom_bot_hayeu.constants import AdminFlags
 from bspu_profcom_bot_hayeu.context import BotContextEncoder, BspuContext, ChatContextEncoder
+from bspu_profcom_bot_hayeu.db import Admin
+from bspu_profcom_bot_hayeu.services import messaging
 from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init
 from bspu_profcom_bot_hayeu.views import error, main_menu
 
 
-def _retrieve_callback_action(context: BspuContext, data: str) -> Callback:
+def _retrieve_callback(context: BspuContext, data: str) -> Callback:
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
@@ -29,9 +33,9 @@ async def callback_handler(update: Update, context: BspuContext):
 
     await update.callback_query.answer()
 
-    action = _retrieve_callback_action(context, update.callback_query.data)
+    callback = _retrieve_callback(context, update.callback_query.data)
 
-    await action(update, context)
+    await callback(update, context)
 
 
 async def message_handler(update: Update, context: BspuContext):
@@ -62,6 +66,11 @@ async def message_handler(update: Update, context: BspuContext):
         case "reload":
             await post_init(context.application)
             return
+        case "reset":
+            context.chat_data.reset()
+            return
+        case "error":
+            raise RuntimeError("Fake error")
 
     parser: Callback | None = getattr(context.chat_data, "input_parser", None)
 
@@ -79,7 +88,7 @@ async def start_command(update: Update, context: BspuContext):
 
 
 async def admin_command(update: Update, context: BspuContext):
-    pass
+    await admin_menu.admin_login(update, context)
 
 
 def _err_str(update: object, context: BspuContext):
@@ -135,3 +144,19 @@ async def error_handler(update: object | None, context: BspuContext):
         context,
         f"{type(context.error).__name__}({context.error})\n(Caught by error_handler, i.e. uncaught)",
     )
+
+    admins = await Admin.pull_by_flags(AdminFlags.LOG_ERRORS)
+
+    if admins:
+        for admin in admins:
+            if TYPE_CHECKING:
+                assert admin.user_id is not None
+
+            await messaging.send_stray(
+                context,
+                admin.user_id,
+                context.bot_data.texts["error_arrived"](
+                    {"count": len(context.bot_data.error_logs)}
+                ),
+                context.bot_data.texts["error_arrived"].parse_mode,
+            )

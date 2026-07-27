@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 from telegram import Update
 
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
@@ -27,4 +25,10 @@ async def ask_question(department: Department, update: Update, context: BspuCont
 
 @cr.register("question_menu_ask_departments")
 async def show_departments(update: Update, context: BspuContext):
-    await display_departments(update, context, ask_question, questions_menu)
+    await display_departments(
+        update,
+        context,
+        "see_departments",
+        ask_question,
+        questions_menu,
+    )

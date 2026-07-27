@@ -89,6 +89,6 @@ def _apply_context_update(context: BspuContext):
         assert context.chat_data is not None
 
     for field, value in context.chat_data.apply_after_update.items():
-        setattr(context.chat_data, field, None if not value else value)
+        setattr(context.chat_data, field, value)
 
     context.chat_data.apply_after_update.clear()

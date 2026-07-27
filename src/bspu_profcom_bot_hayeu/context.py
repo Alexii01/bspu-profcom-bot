@@ -61,7 +61,6 @@ class ChatContext:
 
     def admin_clear(self):
         self.user = None
-        self.representing_department = None
         self.answering_question = None
         self.skip_questions.clear()
 
@@ -69,12 +68,30 @@ class ChatContext:
         self.asking_department = None
         self.viewing_question = None
 
-    def full_clear(self):
+    def clear(self):
         self.msg_clear()
         self.keyboard_clear()
         self.admin_clear()
         self.question_clear()
+
+    def full_clear(self):
+        self.clear()
+        self.representing_department = None
         self.apply_after_update.clear()
+
+    def reset(self):
+        self.last_messages = []
+        self.last_keyboard_type = None
+        self.input_parser = None
+        self.token_store = {}
+        self.apply_after_update = {}
+        self.user = None
+        self.representing_department = None
+        self.answering_question = None
+        self.skip_questions = []
+        self.asking_department = None
+        self.viewing_question = None
+        self.asked_questions = []
 
 
 class BspuContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
@@ -94,26 +111,25 @@ class BotContextEncoder(JSONEncoder):
 
 
 class ChatContextEncoder(JSONEncoder):
-    def _input_parser_to_str(self, obj):
-        if isinstance(obj, ChatContext):
-            if obj.input_parser:
-                return getattr(
-                    obj.input_parser,
-                    "__name__",
-                    repr(obj.input_parser)
-                    if not isinstance(obj.input_parser, functools.partial)
-                    else getattr(obj.input_parser.func, "__name__", "Partial with unknown origin"),
-                )
-            else:
-                return None
+    def _callback_to_str(self, callback: Callback):
+        return getattr(
+            callback,
+            "__name__",
+            repr(callback)
+            if not isinstance(callback, functools.partial)
+            else getattr(callback.func, "__name__", "Partial with unknown origin"),
+        )
 
     def default(self, obj):
         if isinstance(obj, ChatContext):
             return {
                 "last_messages": len(obj.last_messages),
                 "last_keyboard_type": obj.last_keyboard_type,
-                "input_parser": self._input_parser_to_str(obj),
-                "token_store": obj.token_store,
+                "input_parser": self._callback_to_str(obj.input_parser),
+                "token_store": {
+                    name: self._callback_to_str(callback)
+                    for name, callback in obj.token_store.items()
+                },
                 "user": str(obj.user.id) if obj.user else None,
                 "representing_department": obj.representing_department,
             }

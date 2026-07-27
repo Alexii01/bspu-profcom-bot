@@ -125,9 +125,12 @@ async def clear_keyboard(update: Update, context: BspuContext):
 
     last_keyboard_type = context.chat_data.last_keyboard_type
 
-    if last_keyboard_type == "inline" and update.callback_query is None:
+    if (
+        last_keyboard_type == "inline"
+        and context.chat_data.last_messages
+        and update.callback_query is None
+    ):
         last_message = context.chat_data.last_messages[-1]
-        last_message.date
         text = last_message.text_html
 
         last_message = await last_message.edit_text(

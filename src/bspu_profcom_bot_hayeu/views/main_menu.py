@@ -11,6 +11,11 @@ cr = CallbackRegistry()
 
 @cr.register("first_message")
 async def first_message(update: Update, context: BspuContext):
+    if TYPE_CHECKING:
+        assert context.chat_data is not None
+
+    await messaging.delete_all_messages(update, context)
+    context.chat_data.clear()
     await messaging.update_last_or_send_msg(
         update,
         context,

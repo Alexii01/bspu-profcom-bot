@@ -115,9 +115,9 @@ class Admin:
             )
             await conn.commit()
 
-        dataclasses.replace(instance, in_db=True)
+        new_self = dataclasses.replace(instance, in_db=True)
 
-        return (instance, passw)
+        return (new_self, passw)
 
     @staticmethod
     async def pull(id: UUID) -> Admin | None:
@@ -130,7 +130,7 @@ class Admin:
             return Admin.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_by_user_id(user_id: str) -> Admin | None:
+    async def pull_by_user_id(user_id: int) -> Admin | None:
         """Returns an admin associated with a user"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
@@ -185,17 +185,20 @@ class Admin:
     async def set_user_id(self, user_id: int) -> Admin:
         if self.user_id or not self.in_db:
             return self
-        dataclasses.replace(self, user_id=user_id)
+
         async with aiosqlite.connect(db) as conn:
+            print("Updating user id in db")
             await conn.execute(
                 f"UPDATE {constants.AdminTable} SET user_id=:user_id WHERE id=:id",
                 {
                     "user_id": user_id,
-                    "id": self.id,
+                    "id": str(self.id),
                 },
             )
             await conn.commit()
-        return self
+        print("Updated user id in db")
+        new_self = dataclasses.replace(self, user_id=user_id)
+        return new_self
 
     async def rename(self, name: str) -> Admin:
         """Update admin's name in db"""
@@ -205,23 +208,23 @@ class Admin:
                     f"UPDATE {constants.AdminTable} SET public_name=:public_name where id=:id",
                     {
                         "public_name": name,
-                        "id": self.id,
+                        "id": str(self.id),
                     },
                 )
                 await conn.commit()
-        dataclasses.replace(self, public_name=name)
-        return self
+        new_self = dataclasses.replace(self, public_name=name)
+        return new_self
 
     async def delete(self) -> Admin:
         """Delete admin from db"""
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
-                    f"DELETE FROM {constants.AdminTable} WHERE id=:id", {"id": self.id}
+                    f"DELETE FROM {constants.AdminTable} WHERE id=:id", {"id": str(self.id)}
                 )
                 await conn.commit()
-        dataclasses.replace(self, in_db=False)
-        return self
+        new_self = dataclasses.replace(self, in_db=False)
+        return new_self
 
     async def _update_flags(self):
         if self.in_db:
@@ -230,16 +233,16 @@ class Admin:
                     f""" UPDATE {constants.AdminTable}"""
                     """ SET flags = :flags"""
                     """ WHERE id=?""",
-                    {"id": self.id, "flags": int(self.flags)},
+                    {"id": str(self.id), "flags": int(self.flags)},
                 )
                 await conn.commit()
 
     async def add_flags(self, flags: constants.AdminFlags) -> Admin:
-        dataclasses.replace(self, flags=(self.flags | flags))
-        await self._update_flags()
-        return self
+        new_self = dataclasses.replace(self, flags=(self.flags | flags))
+        await new_self._update_flags()
+        return new_self
 
     async def remove_flags(self, flags: constants.AdminFlags) -> Admin:
-        dataclasses.replace(self, flags=(self.flags & ~flags))
-        await self._update_flags()
-        return self
+        new_self = dataclasses.replace(self, flags=(self.flags & ~flags))
+        await new_self._update_flags()
+        return new_self

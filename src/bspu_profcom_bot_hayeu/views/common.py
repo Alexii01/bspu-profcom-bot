@@ -14,6 +14,7 @@ from bspu_profcom_bot_hayeu.services import messaging, messaging_helpers
 async def display_departments(
     update: Update,
     context: BspuContext,
+    text_alias: str,
     departments_callback: Callable[
         [Department, Update, BspuContext],
         Coroutine[Any, Any, None],
@@ -36,6 +37,6 @@ async def display_departments(
     await messaging.update_last_or_send_msg(
         update,
         context,
-        "see_departments",
+        text_alias,
         reply_markup=markup,
     )
