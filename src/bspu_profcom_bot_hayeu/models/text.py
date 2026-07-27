@@ -44,13 +44,18 @@ class Text:
 
         return not self.expected_variables or all(var in vars for var in self.expected_variables)
 
-    def __call__(self, vars: dict | None = None) -> str:
+    def __call__(self, *args, **kwargs) -> str:
         # Template not applicable -> return text
         if not self.expected_variables:
             return self._text
 
+        if args and kwargs:
+            raise ValueError("Template provided both positional and keyword parameters")
+
         # Apply template
-        if vars and self.__verify_variables(vars):
-            return self._text.format(**vars)
+        if kwargs and self.__verify_variables(kwargs):
+            return self._text.format(**kwargs)
+        elif args:
+            return self._text.format(*args)
         else:
             raise ValueError("Variables requested by message weren't provided")

@@ -1,4 +1,4 @@
-from .text import Text
 from .keyboard import Keyboard
+from .text import Text
 
-__all__ = ["Text", "Keyboard"]
+__all__ = ["Keyboard", "Text"]

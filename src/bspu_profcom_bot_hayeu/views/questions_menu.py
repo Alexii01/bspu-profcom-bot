@@ -20,11 +20,13 @@ async def questions_menu(update: Update, context: BspuContext):
 
 
 async def ask_question(department: Department, update: Update, context: BspuContext):
+    return
     await questions_menu(update, context)
 
 
 @cr.register("question_menu_ask_departments")
 async def show_departments(update: Update, context: BspuContext):
+    return
     await display_departments(
         update,
         context,

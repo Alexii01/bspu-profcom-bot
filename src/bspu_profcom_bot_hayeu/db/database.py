@@ -53,7 +53,7 @@ async def __create_super_maintainer_if_not_present():
     # Create super admin
     [_, password] = await Admin.new(
         public_name=None,
-        name_base="Новый админ ",
+        name_base="Новый админ {}",
         flags=constants.AdminFlags.IS_SUPER | constants.AdminFlags.IS_MAINTAINER,
     )
     # Save the password for future reference

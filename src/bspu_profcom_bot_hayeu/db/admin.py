@@ -88,7 +88,9 @@ class Admin:
         flags: constants.AdminFlags | None = None,
     ) -> tuple[Admin, str]:
         """Generates a password and initialises the fields with default values,
-        then INSERTs into db.
+        then INSERTs into db. Returns admin and password.
+
+        Example: `[admin, passwd] = Admin.new(name_base="Admin ")`
         """
         passw = password.new(3, 6)
         flags = flags or constants.AdminFlags(0)
@@ -97,7 +99,7 @@ class Admin:
             id=uuid4(),
             public_name=public_name
             if public_name
-            else name_base + password.subsequence(string.digits, 6),
+            else name_base.format(password.subsequence(string.digits, 6)),
             user_id=None,
             flags=flags,
             in_db=False,

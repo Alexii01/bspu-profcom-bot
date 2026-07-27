@@ -51,10 +51,13 @@ def _resolve_keyboard(
 
 
 def _log_one_time_keyboard(
-    context: BspuContext, keyboard: Keyboard, buttons: dict[str, str]
+    context: BspuContext, keyboard: Keyboard, buttons: dict[str, str] | None = None
 ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
     if TYPE_CHECKING:
         assert context.chat_data is not None
+
+    if not buttons:
+        buttons = context.bot_data.buttons
 
     context.chat_data.apply_after_update["last_keyboard_type"] = keyboard.type
 

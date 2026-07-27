@@ -155,8 +155,6 @@ async def error_handler(update: object | None, context: BspuContext):
             await messaging.send_stray(
                 context,
                 admin.user_id,
-                context.bot_data.texts["error_arrived"](
-                    {"count": len(context.bot_data.error_logs)}
-                ),
+                context.bot_data.texts["error_arrived"](count=len(context.bot_data.error_logs)),
                 context.bot_data.texts["error_arrived"].parse_mode,
             )

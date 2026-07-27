@@ -3,6 +3,7 @@ from functools import partial
 from typing import Any
 
 from telegram import Update
+from telegram.constants import ParseMode
 
 from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.context import BspuContext
@@ -38,5 +39,27 @@ async def display_departments(
         update,
         context,
         text_alias,
+        reply_markup=markup,
+    )
+
+
+async def pop_up(
+    update: Update,
+    context: BspuContext,
+    text: str,
+    parse_mode: ParseMode | None,
+    button_alias: str,
+    callback: Callable,
+):
+    """Sends a message with a single button"""
+    keyboard = Keyboard("inline", {button_alias: callback})
+
+    markup = messaging_helpers._log_one_time_keyboard(context, keyboard)
+
+    await messaging.update_last_or_send_msg(
+        update,
+        context,
+        text=text,
+        parse_mode=parse_mode,
         reply_markup=markup,
     )
