@@ -115,6 +115,7 @@ async def delete_all_messages(update: Update, context: BspuContext):
 
 
 async def clear_keyboard(update: Update, context: BspuContext):
+    """Clears keyboard (and/or relevant context) about it"""
     if TYPE_CHECKING:
         assert update.effective_user is not None
         assert context.chat_data is not None

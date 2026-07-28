@@ -104,7 +104,8 @@ class Question:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
-                f"SELECT * FROM {constants.QuestionsTable} WHERE id=:id LIMIT 1", {"id": str(id)}
+                f"SELECT * FROM {constants.QuestionsTable} WHERE id=:id LIMIT 1",
+                {"id": str(id)},
             )
             return Question.from_row(await cursor.fetchone())
 
@@ -113,7 +114,7 @@ class Question:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
-                (f"SELECT * FROM {constants.QuestionsTable} WHERE user_id=:user_id"),
+                f"SELECT * FROM {constants.QuestionsTable} WHERE user_id=:user_id",
                 {"user_id": user_id},
             )
             return Question.from_rows(await cursor.fetchall())
@@ -128,7 +129,7 @@ class Question:
                     FROM {constants.QuestionsTable}
                     ORDER BY asked_date
                     ASC LIMIT 1
-                    """,
+                """,
             )
             return Question.from_row(await cursor.fetchone())
 
@@ -143,7 +144,7 @@ class Question:
                     WHERE department=:dept
                     ORDER BY asked_date
                     ASC LIMIT 1
-                    """,
+                """,
                 {"dept": str(dept)},
             )
             return Question.from_row(await cursor.fetchone())
@@ -159,7 +160,7 @@ class Question:
                         WHERE NOT IN ({})
                         ORDER BY asked_date
                         ASC LIMIT 1
-                        """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
+                """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
                 [str(id) for id in ids],
             )
             return Question.from_row(await cursor.fetchone())
@@ -175,7 +176,7 @@ class Question:
                         WHERE department=?  AND id NOT IN ({})
                         ORDER BY asked_date
                         ASC LIMIT 1
-                        """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
+                """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
                 [str(dept)] + [str(id) for id in ids],
             )
             return Question.from_row(await cursor.fetchone())
@@ -207,9 +208,11 @@ class Question:
         if not question.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
-                    f"""INSERT INTO {constants.QuestionsTable} VALUES"""
-                    """(:id, :user_id, :department_id, :asked_date, :answered_by, """
-                    """:answered_date, :message)""",
+                    f"""
+                        INSERT INTO {constants.QuestionsTable} VALUES
+                        (:id, :user_id, :department_id, :asked_date,
+                        :answered_by, :answered_date, :message)
+                    """,
                     Question.to_row(question),
                 )
                 await conn.commit()
@@ -220,7 +223,7 @@ class Question:
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
-                    (f"UPDATE {constants.QuestionsTable} SET department=:dept WHERE id=:id"),
+                    f"UPDATE {constants.QuestionsTable} SET department=:dept WHERE id=:id",
                     {
                         "dept": str(dept),
                         "id": str(self.id),

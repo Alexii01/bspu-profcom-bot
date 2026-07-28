@@ -43,7 +43,7 @@ class ChatContext:
     apply_after_update: dict[str, Any | None] = field(default_factory=dict)
     # Admin menu
     user: Admin | None = None
-    representing_department: str | None = None
+    representing_department: str | Literal["all"] | None = None
     answering_question: Question | None = None
     skip_questions: list[Question] = field(default_factory=list)
     # Question menu

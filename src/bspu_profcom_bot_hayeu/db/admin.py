@@ -81,6 +81,43 @@ class Admin:
         }
 
     @staticmethod
+    def _resolve_flags_pull(
+        fields: str,
+        with_flags: constants.AdminFlags | None = None,
+        without_flags: constants.AdminFlags | None = None,
+    ) -> tuple[str, dict]:
+        if with_flags and without_flags:
+            return (
+                (
+                    f"SELECT {fields} FROM {constants.AdminTable}"
+                    " WHERE (flags & :with_flags) = :with_flags"
+                    " AND (~flags & :without_flags) = :without_flags"
+                ),
+                {
+                    "with_flags": int(with_flags),
+                    "without_flags": int(without_flags),
+                },
+            )
+        elif with_flags:
+            return (
+                (
+                    f"SELECT {fields} FROM {constants.AdminTable}"
+                    " WHERE (flags & :with_flags) = :with_flags"
+                ),
+                {"with_flags": int(with_flags)},
+            )
+        elif without_flags:
+            return (
+                (
+                    f"SELECT {fields} FROM {constants.AdminTable}"
+                    " WHERE (~flags & :without_flags) = :without_flags"
+                ),
+                {"without_flags": int(without_flags)},
+            )
+        else:
+            return (f"SELECT {fields} FROM {constants.AdminTable}", {})
+
+    @staticmethod
     async def new(
         *,
         public_name: str | None = None,
@@ -110,9 +147,8 @@ class Admin:
 
         async with aiosqlite.connect(db) as conn:
             await conn.execute(
-                (
-                    f"INSERT INTO {constants.AdminTable} VALUES (:id, :public_name, :user_id, :password_hash, :flags)"
-                ),
+                f"INSERT INTO {constants.AdminTable} VALUES"
+                " (:id, :public_name, :user_id, :password_hash, :flags)",
                 admin,
             )
             await conn.commit()
@@ -137,32 +173,20 @@ class Admin:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
-                f"SELECT * FROM {constants.AdminTable} WHERE user_id=:user_id", {"user_id": user_id}
+                f"SELECT * FROM {constants.AdminTable} WHERE user_id=:user_id",
+                {"user_id": user_id},
             )
             return Admin.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_by_flags(flags: constants.AdminFlags) -> Iterable[Admin] | None:
-        """Returns admins with `flags set`"""
+    async def pull_by_flags(
+        with_flags: constants.AdminFlags | None = None,
+        without_flags: constants.AdminFlags | None = None,
+    ) -> Iterable[Admin] | None:
         async with aiosqlite.connect(db) as conn:
+            [cmd, args] = Admin._resolve_flags_pull("*", with_flags, without_flags)
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(
-                f"""SELECT * FROM {constants.AdminTable}"""
-                """ WHERE (flags & :flags) = :flags""",
-                {"flags": int(flags)},
-            )
-            return Admin.from_rows(await cursor.fetchall())
-
-    @staticmethod
-    async def pull_without_flags(flags: constants.AdminFlags) -> Iterable[Admin] | None:
-        """Returns admins with `flags set`"""
-        async with aiosqlite.connect(db) as conn:
-            conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(
-                f"""SELECT * FROM {constants.AdminTable}"""
-                """ WHERE (~flags & :flags) = :flags""",
-                {"flags": int(flags)},
-            )
+            cursor = await conn.execute(cmd, args)
             return Admin.from_rows(await cursor.fetchall())
 
     @staticmethod
@@ -178,10 +202,15 @@ class Admin:
         return None
 
     @staticmethod
-    async def names() -> Iterable[str] | None:
+    async def names(
+        with_flags: constants.AdminFlags | None = None,
+        without_flags: constants.AdminFlags | None = None,
+    ) -> Iterable[str] | None:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(f"SELECT public_name FROM {constants.AdminTable}")
+            [cmd, args] = Admin._resolve_flags_pull("public_name", with_flags, without_flags)
+            cursor = await conn.execute(cmd, args)
+
             return [row[0] for row in (await cursor.fetchall())]
 
     async def set_user_id(self, user_id: int) -> Admin:
@@ -222,7 +251,8 @@ class Admin:
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
-                    f"DELETE FROM {constants.AdminTable} WHERE id=:id", {"id": str(self.id)}
+                    f"DELETE FROM {constants.AdminTable} WHERE id=:id",
+                    {"id": str(self.id)},
                 )
                 await conn.commit()
         new_self = dataclasses.replace(self, in_db=False)

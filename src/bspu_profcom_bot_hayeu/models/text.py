@@ -46,9 +46,8 @@ class Text:
 
     def __call__(self, *args, **kwargs) -> str:
         # Template not applicable -> return text
-        if not self.expected_variables:
+        if self.expected_variables is None:
             return self._text
-
         if args and kwargs:
             raise ValueError("Template provided both positional and keyword parameters")
 
