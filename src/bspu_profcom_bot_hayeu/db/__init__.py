@@ -1,5 +1,5 @@
-from .question import Question
 from .admin import Admin
 from .department import Department
+from .question import Question
 
-__all__ = ["Question", "Admin", "Department"]
+__all__ = ["Admin", "Department", "Question"]

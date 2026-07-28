@@ -73,6 +73,12 @@ class Department:
         return (await Department.pull(Department.name_to_id(name))) is None
 
     @staticmethod
+    async def _resolve_pull_cmd(fields: str, plan_removal: bool) -> str:
+        return (
+            f"SELECT {fields} FROM {constants.DepartmentsTable} WHERE plan_removal = {plan_removal}"
+        )
+
+    @staticmethod
     async def pull(id: str) -> Department | None:
         """Reads a department from db"""
         async with aiosqlite.connect(db) as conn:
@@ -86,18 +92,14 @@ class Department:
     async def pull_all_active() -> Iterable[Department]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(
-                f"SELECT * FROM {constants.DepartmentsTable} WHERE plan_removal = 0"
-            )
+            cursor = await conn.execute(Department._resolve_pull_cmd("name", False))
             return Department.from_rows(await cursor.fetchall())
 
     @staticmethod
     async def pull_to_be_removed() -> Iterable[Department]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(
-                f"SELECT * FROM {constants.DepartmentsTable} WHERE plan_removal = 1"
-            )
+            cursor = await conn.execute(Department._resolve_pull_cmd("name", True))
             return Department.from_rows(await cursor.fetchall())
 
     @staticmethod
@@ -106,6 +108,14 @@ class Department:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(f"SELECT * FROM {constants.DepartmentsTable}")
             return Department.from_rows(await cursor.fetchall())
+
+    @staticmethod
+    async def names(plan_removal: bool) -> Iterable[str]:
+        async with aiosqlite.connect(db) as conn:
+            conn.row_factory = aiosqlite.Row
+            cursor = await conn.execute(Department._resolve_pull_cmd("name", plan_removal))
+
+            return [row[0] for row in (await cursor.fetchall())]
 
     async def is_used(self: Self) -> bool:
         async with aiosqlite.connect(db) as conn:

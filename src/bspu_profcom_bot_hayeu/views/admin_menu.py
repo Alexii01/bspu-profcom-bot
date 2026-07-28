@@ -117,6 +117,33 @@ async def maintainer_settings(update: Update, context: BspuContext):
     )
 
 
+@cr.register("display_instructions")
+async def display_instructions(update: Update, context: BspuContext):
+    text = context.bot_data.texts["admin_instructions"]
+    await common.pop_up(update, context, text(), text.parse_mode, "okay", admin_settings)
+
+
+@cr.register("su_admin_admin_submenu")
+async def su_admin_admin_submenu(update: Update, context: BspuContext):
+
+    su_admins = await Admin.names(constants.AdminFlags.IS_SUPER, constants.AdminFlags.IS_MAINTAINER)
+    admins = await Admin.names(
+        without_flags=constants.AdminFlags.IS_MAINTAINER | constants.AdminFlags.IS_SUPER
+    )
+
+    text = context.bot_data.texts["admin_submenu"]
+    await messaging.update_last_or_send_msg(
+        update,
+        context,
+        text=text(
+            admins=_seq_to_md_list(admins),
+            su_admins=_seq_to_md_list(su_admins),
+        ),
+        parse_mode=text.parse_mode,
+        keyboard_alias="su_admin_admin_settings",
+    )
+
+
 async def process_admin_name(update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert update.message is not None
@@ -165,46 +192,19 @@ async def update_admin_name(update: Update, context: BspuContext):
     )
 
 
-@cr.register("display_instructions")
-async def display_instructions(update: Update, context: BspuContext):
-    text = context.bot_data.texts["admin_instructions"]
-    await common.pop_up(update, context, text(), text.parse_mode, "okay", admin_settings)
-
-
-@cr.register("su_admin_admin_submenu")
-async def su_admin_admin_submenu(update: Update, context: BspuContext):
-
-    su_admins = await Admin.names(constants.AdminFlags.IS_SUPER, constants.AdminFlags.IS_MAINTAINER)
-    admins = await Admin.names(
-        without_flags=constants.AdminFlags.IS_MAINTAINER | constants.AdminFlags.IS_SUPER
-    )
-
-    text = context.bot_data.texts["admin_submenu"]
-    await messaging.update_last_or_send_msg(
-        update,
-        context,
-        text=text(
-            admins=_seq_to_md_list(admins),
-            su_admins=_seq_to_md_list(su_admins),
-        ),
-        parse_mode=text.parse_mode,
-        keyboard_alias="su_admin_admin_settings",
-    )
-
-
 @cr.register("su_admin_dept_submenu")
 async def su_admin_dept_submenu(update: Update, context: BspuContext):
 
-    active_deps = await Department.pull_all_active()
-    to_be_removed = await Department.pull_to_be_removed()
+    active_deps = await Department.names(False)
+    to_be_removed = await Department.names(True)
 
     text = context.bot_data.texts["dept_submenu"]
     await messaging.update_last_or_send_msg(
         update,
         context,
         text=text(
-            active=_seq_to_md_list([dep.name for dep in active_deps]),
-            marked=_seq_to_md_list([dep.name for dep in to_be_removed]),
+            active=_seq_to_md_list(active_deps),
+            marked=_seq_to_md_list(to_be_removed),
         ),
         parse_mode=text.parse_mode,
         keyboard_alias="su_admin_dept_settings",

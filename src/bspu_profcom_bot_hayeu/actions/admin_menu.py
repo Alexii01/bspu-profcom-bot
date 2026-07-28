@@ -129,7 +129,7 @@ async def enter_new_dept_name(update: Update, context: BspuContext):
 
     context.chat_data.apply_after_update["input_parser"] = create_new_dept
 
-    dept_names = [dept.name for dept in await Department.pull_all_active() or []]
+    dept_names = await Department.names(False)
 
     msg_text = context.bot_data.texts["enter_department_name"]
     await common.pop_up(
