@@ -73,7 +73,7 @@ class Department:
         return (await Department.pull(Department.name_to_id(name))) is None
 
     @staticmethod
-    async def _resolve_pull_cmd(fields: str, plan_removal: bool) -> str:
+    def _resolve_pull_cmd(fields: str, plan_removal: bool) -> str:
         return (
             f"SELECT {fields} FROM {constants.DepartmentsTable} WHERE plan_removal = {plan_removal}"
         )

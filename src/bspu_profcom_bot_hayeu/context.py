@@ -22,8 +22,7 @@ class BotContext:
     buttons: dict[str, str] = field(default_factory=dict)
     buttons_inv: dict[str, str] = field(default_factory=dict)
     keyboards: dict[str, Keyboard] = field(default_factory=dict)
-    actions: Mapping[str, Callback] = field(default_factory=dict)
-    views: Mapping[str, Callback] = field(default_factory=dict)
+    callbacks: Mapping[str, Callback] = field(default_factory=dict)
     # Message-managing
     token_store: dict[str, Callback] = field(default_factory=dict)
     # Admin stuff

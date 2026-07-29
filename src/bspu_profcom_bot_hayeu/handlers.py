@@ -5,14 +5,13 @@ from typing import TYPE_CHECKING
 
 from telegram import Update
 
-from bspu_profcom_bot_hayeu.actions import admin_menu
 from bspu_profcom_bot_hayeu.callback import Callback
+from bspu_profcom_bot_hayeu.callbacks import admin_menu, error, main_menu
 from bspu_profcom_bot_hayeu.constants import AdminFlags
 from bspu_profcom_bot_hayeu.context import BotContextEncoder, BspuContext, ChatContextEncoder
 from bspu_profcom_bot_hayeu.db import Admin
 from bspu_profcom_bot_hayeu.services import messaging
 from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init
-from bspu_profcom_bot_hayeu.views import error, main_menu
 
 
 def _retrieve_callback(context: BspuContext, data: str) -> Callback:

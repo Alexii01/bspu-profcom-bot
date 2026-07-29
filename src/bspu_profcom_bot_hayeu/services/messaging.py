@@ -40,7 +40,6 @@ async def update_last_msg(
     ):
         kwargs.setdefault("text", context.chat_data.last_messages[-1].text_html_urled)
         kwargs.setdefault("parse_mode", ParseMode.HTML)
-
         await delete_all_messages(update, context)
 
         await send_msg(update, context, text_alias, keyboard_alias, *args, **kwargs)

@@ -3,75 +3,31 @@ from typing import TYPE_CHECKING
 
 from telegram import Update
 
-from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
+from bspu_profcom_bot_hayeu.callbacks import admin_menu, common
 from bspu_profcom_bot_hayeu.context import BspuContext
-from bspu_profcom_bot_hayeu.db import Admin, Department
-from bspu_profcom_bot_hayeu.views import admin_menu, common
+from bspu_profcom_bot_hayeu.db import Department
+from bspu_profcom_bot_hayeu.services import messaging, messaging_helpers
 
 cr = CallbackRegistry()
 
 
-@cr.register("attempt_login")
-async def admin_login(update: Update, context: BspuContext):
-    if TYPE_CHECKING:
-        assert update.effective_user is not None
-        assert context.chat_data is not None
+@cr.register("su_admin_dept_submenu")
+async def su_admin_dept_submenu(update: Update, context: BspuContext):
 
-    admin = await Admin.pull_by_user_id(update.effective_user.id)
+    active_deps = await Department.names(False)
+    to_be_removed = await Department.names(True)
 
-    if not admin:
-        await admin_menu.enter_admin_password(update, context)
-        return
-
-    context.chat_data.user = admin
-    await admin_menu.main_menu(update, context)
-
-
-@cr.register("create_admin")
-async def create_admin(update: Update, context: BspuContext):
-    [_, passwd] = await Admin.new(name_base=context.bot_data.texts["default_admin_name"]._text)
-
-    await common.pop_up(
+    text = context.bot_data.texts["dept_submenu"]
+    await messaging.update_last_or_send_msg(
         update,
         context,
-        text=context.bot_data.texts["new_admin_is"](passwd),
-        parse_mode=context.bot_data.texts["new_admin_is"].parse_mode,
-        button_alias="okay",
-        callback=admin_menu.admin_su_settings,
-    )
-
-
-async def delete_admin(admin: Admin, update: Update, context: BspuContext):
-
-    admin_user_id = (await admin.delete()).user_id
-
-    if TYPE_CHECKING:
-        assert admin_user_id is not None
-
-    context.application.chat_data[admin_user_id].admin_clear()
-
-    msg_text = context.bot_data.texts["confirm_admin_deletion"]
-    await common.pop_up(
-        update,
-        context,
-        msg_text(admin.public_name),
-        msg_text.parse_mode,
-        "okay",
-        admin_menu.admin_su_settings,
-    )
-
-
-@cr.register("select_regular_admins_to_delete")
-async def select_regular_admins_to_delete(update: Update, context: BspuContext):
-    await common.display_admin_selector_keyboard(
-        update,
-        context,
-        "select_admin_to_delete",
-        None,
-        constants.AdminFlags.IS_MAINTAINER | constants.AdminFlags.IS_SUPER,
-        delete_admin,
-        admin_menu.admin_su_settings,
+        text=text(
+            active=messaging_helpers._seq_to_md_list(active_deps),
+            marked=messaging_helpers._seq_to_md_list(to_be_removed),
+        ),
+        parse_mode=text.parse_mode,
+        keyboard_alias="su_admin_dept_settings",
     )
 
 
@@ -135,7 +91,7 @@ async def enter_new_dept_name(update: Update, context: BspuContext):
     await common.pop_up(
         update,
         context,
-        msg_text(admin_menu._seq_to_md_list(dept_names)),
+        msg_text(messaging_helpers._seq_to_md_list(dept_names)),
         msg_text.parse_mode,
         "go_back",
         admin_menu.admin_su_settings,

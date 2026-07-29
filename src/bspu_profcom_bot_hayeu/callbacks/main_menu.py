@@ -9,6 +9,11 @@ from bspu_profcom_bot_hayeu.services import messaging
 cr = CallbackRegistry()
 
 
+@cr.register("noop")
+async def dummy(update: Update, context: BspuContext):
+    return
+
+
 @cr.register("first_message")
 async def first_message(update: Update, context: BspuContext):
     if TYPE_CHECKING:

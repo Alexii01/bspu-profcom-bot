@@ -10,16 +10,9 @@ from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
 
 
-def _build_buttons(
-    value: dict[str, Any], actions: dict[str, Callback], views: dict[str, Callback]
-) -> dict[str, Callback]:
+def _build_buttons(value: dict[str, Any], callbacks: dict[str, Callback]) -> dict[str, Callback]:
     return {
-        button_key: (
-            views[button_value["view"]]
-            if "view" in button_value
-            else actions[button_value["action"]]
-        )
-        for button_key, button_value in value["buttons"].items()
+        button_key: callbacks[button_value] for button_key, button_value in value["buttons"].items()
     }
 
 
@@ -30,8 +23,7 @@ class Keyboard(NamedTuple):
     @staticmethod
     def load(
         filepath: FileDescriptorOrPath,
-        actions: dict[str, Callback],
-        views: dict[str, Callback],
+        callbacks: dict[str, Callback],
         path: str | None = None,
     ) -> dict[str, Keyboard]:
         """Loads data from `filepath` file, first traversing nodes from `path`
@@ -42,7 +34,7 @@ class Keyboard(NamedTuple):
         return {
             key: Keyboard(
                 type=value["type"],
-                buttons=_build_buttons(value, actions, views),
+                buttons=_build_buttons(value, callbacks),
             )
             for key, value in loader[path].items()
         }

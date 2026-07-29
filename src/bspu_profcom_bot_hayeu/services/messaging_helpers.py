@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -7,9 +8,9 @@ from telegram import (
     Update,
 )
 
+from bspu_profcom_bot_hayeu.callbacks import error as error_views
 from bspu_profcom_bot_hayeu.context import BspuContext
 from bspu_profcom_bot_hayeu.models import Keyboard
-from bspu_profcom_bot_hayeu.views import error as error_views
 
 
 async def _reply_keyboard_input_parser(keyboard: Keyboard, update: Update, context: BspuContext):
@@ -95,3 +96,7 @@ def _apply_context_update(context: BspuContext):
         setattr(context.chat_data, field, value)
 
     context.chat_data.apply_after_update.clear()
+
+
+def _seq_to_md_list(items: Iterable[str] | None, delim: str = "- {}\n") -> str:
+    return "".join([delim.format(item) for item in items]) if items else ""

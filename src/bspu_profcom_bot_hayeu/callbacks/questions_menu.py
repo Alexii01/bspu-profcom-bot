@@ -4,7 +4,7 @@ from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.context import BspuContext
 from bspu_profcom_bot_hayeu.db import Department
 from bspu_profcom_bot_hayeu.services import messaging
-from bspu_profcom_bot_hayeu.views.common import display_departments_selector_keyboard
+from bspu_profcom_bot_hayeu.callbacks.common import display_departments_selector_keyboard
 
 cr = CallbackRegistry()
 
