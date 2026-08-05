@@ -43,15 +43,11 @@ class ChatContext:
     # Admin menu
     user: Admin | None = None
     representing_department: str | Literal["all"] | None = None
-    answering_question: Question | None = None
     skip_questions: list[Question] = field(default_factory=list)
-    # Question menu
-    asking_department: str | None = None
-    viewing_question: Question | None = None
-    asked_questions: list[Question] = field(default_factory=list)
 
     def msg_clear(self):
         self.last_messages.clear()
+        self.keyboard_clear()
 
     def keyboard_clear(self):
         self.last_keyboard_type = None
@@ -60,18 +56,12 @@ class ChatContext:
 
     def admin_clear(self):
         self.user = None
-        self.answering_question = None
         self.skip_questions.clear()
-
-    def question_clear(self):
-        self.asking_department = None
-        self.viewing_question = None
 
     def clear(self):
         self.msg_clear()
         self.keyboard_clear()
         self.admin_clear()
-        self.question_clear()
 
     def full_clear(self):
         self.clear()

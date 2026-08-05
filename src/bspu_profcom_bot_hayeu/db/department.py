@@ -1,7 +1,7 @@
 import dataclasses
-import hashlib
 from collections.abc import Iterable
 from typing import Any, Self
+from uuid import UUID, uuid4
 
 import aiosqlite
 
@@ -11,7 +11,7 @@ from bspu_profcom_bot_hayeu.db.connect import database as db
 
 @dataclasses.dataclass(frozen=True)
 class Department:
-    id: str
+    id: UUID
     name: str
     plan_removal: bool
     in_db: bool
@@ -19,6 +19,7 @@ class Department:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # select department by id
+    # select department by name
     # select EXISTS questions with department
 
     # insert department (automatically)
@@ -27,14 +28,13 @@ class Department:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    @staticmethod
     def to_row(dept: Department) -> dict[str, Any]:
-        return {"id": dept.id, "name": dept.name, "plan_removal": dept.plan_removal}
+        return {"id": str(dept.id), "name": dept.name, "plan_removal": dept.plan_removal}
 
     @staticmethod
     def _from_row(row: aiosqlite.Row) -> Department:
         return Department(
-            id=row["id"], name=row["name"], plan_removal=bool(row["plan_removal"]), in_db=True
+            id=UUID(row["id"]), name=row["name"], plan_removal=bool(row["plan_removal"]), in_db=True
         )
 
     @staticmethod
@@ -46,13 +46,9 @@ class Department:
         return [Department._from_row(row) for row in rows]
 
     @staticmethod
-    def name_to_id(name: str) -> str:
-        return hashlib.sha1(("".join(name.casefold().split())).encode("utf-8")).hexdigest()
-
-    @staticmethod
     async def new(name: str) -> Department:
         instance = Department(
-            id=Department.name_to_id(name),
+            id=uuid4(),
             name=name,
             plan_removal=False,
             in_db=False,
@@ -60,8 +56,8 @@ class Department:
 
         async with aiosqlite.connect(db) as conn:
             await conn.execute(
-                f"INSERT INTO {constants.DepartmentsTable} VALUES (:id, :name, :plan_removal)",
-                Department.to_row(instance),
+                f"INSERT INTO {constants.DepartmentsTable} VALUES (:id, ]]]]]]]]]:name, :plan_removal)",
+                instance.to_row(),
             )
             await conn.commit()
         instance = dataclasses.replace(instance, in_db=True)
@@ -69,22 +65,16 @@ class Department:
         return instance
 
     @staticmethod
-    async def is_unique(name: str) -> bool:
-        return (await Department.pull(Department.name_to_id(name))) is None
-
-    @staticmethod
     def _resolve_pull_cmd(fields: str, plan_removal: bool) -> str:
-        return (
-            f"SELECT {fields} FROM {constants.DepartmentsTable} WHERE plan_removal = {plan_removal}"
-        )
+        return f"SELECT {fields} FROM {constants.DepartmentsTable} WHERE plan_removal = {int(plan_removal)}"
 
     @staticmethod
-    async def pull(id: str) -> Department | None:
+    async def pull(id: UUID) -> Department | None:
         """Reads a department from db"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
-                f"SELECT * FROM {constants.DepartmentsTable} WHERE id=:id LIMIT 1", {"id": id}
+                f"SELECT * FROM {constants.DepartmentsTable} WHERE id=:id LIMIT 1", {"id": str(id)}
             )
             return Department.from_row(await cursor.fetchone())
 
@@ -92,14 +82,14 @@ class Department:
     async def pull_all_active() -> Iterable[Department]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(Department._resolve_pull_cmd("name", False))
+            cursor = await conn.execute(Department._resolve_pull_cmd("*", False))
             return Department.from_rows(await cursor.fetchall())
 
     @staticmethod
     async def pull_to_be_removed() -> Iterable[Department]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(Department._resolve_pull_cmd("name", True))
+            cursor = await conn.execute(Department._resolve_pull_cmd("*", True))
             return Department.from_rows(await cursor.fetchall())
 
     @staticmethod
@@ -133,9 +123,6 @@ class Department:
             return bool((await cursor.fetchone())[0])  # type:ignore
 
     async def rename(self: Self, new_name: str) -> Department:
-        if Department.name_to_id(new_name) != self.id:
-            return self
-
         if self.plan_removal:
             new_self = dataclasses.replace(self, plan_removal=False, name=new_name)
         else:
@@ -145,30 +132,30 @@ class Department:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
                     f""" UPDATE {constants.DepartmentsTable}
-                                SET name = :new_name
-                                WHERE id=:id
-                            """,
+                        SET name = :new_name
+                        WHERE id=:id
+                        """,
                     {"id": str(self.id), "new_name": new_name},
                 )
                 await conn.commit()
 
         return new_self
 
-    async def set_plan_removal(self: Self, b: bool) -> Department:
-        if self.plan_removal == b:
+    async def set_plan_removal(self: Self, val: bool) -> Department:
+        if self.plan_removal == val:
             return self
 
+        new_self = dataclasses.replace(self, plan_removal=val)
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
-                    f""" UPDATE {constants.DepartmentsTable}
-                        SET plan_removal = :b
+                    f"""UPDATE {constants.DepartmentsTable}
+                        SET plan_removal = :val
                         WHERE id=:id
                     """,
-                    {"id": str(self.id), "b": self.plan_removal},
+                    {"id": str(self.id), "val": new_self.plan_removal},
                 )
                 await conn.commit()
-        new_self = dataclasses.replace(self, plan_removal=b)
 
         return new_self
 
@@ -190,7 +177,7 @@ class Department:
         if not self.in_db or not self.plan_removal:
             return self
 
-        if not (await self.is_used()):
+        if not await self.is_used():
             return await self.delete()
 
         return self

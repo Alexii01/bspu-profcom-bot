@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ def _build_buttons(value: dict[str, Any], callbacks: dict[str, Callback]) -> dic
 
 class Keyboard(NamedTuple):
     type: Literal["inline", "reply"]
-    buttons: dict[str, Callback]
+    buttons: Mapping[str, Callback]
 
     @staticmethod
     def load(

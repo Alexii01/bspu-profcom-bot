@@ -2,7 +2,7 @@ import dataclasses
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any, Self
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import aiosqlite
 
@@ -77,7 +77,6 @@ class Question:
 
     @staticmethod
     async def new(
-        id: UUID,
         user_id: int,
         department_id: UUID,
         asked_date: datetime,
@@ -87,7 +86,7 @@ class Question:
     ) -> Question:
         """Creates a question and inserts it into db"""
         instance = Question(
-            id=id,
+            id=uuid4(),
             user_id=user_id,
             department_id=department_id,
             asked_date=asked_date,

@@ -86,7 +86,14 @@ async def update_last_or_send_msg(
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
+    if update.message:
+        await clear_keyboard(update, context)
+        context.chat_data.msg_clear()
+
     if context.chat_data.last_messages:
+        while len(context.chat_data.last_messages) > 1:
+            await delete_message_at_index(update, context, 0)
+
         await update_last_msg(update, context, text_alias, keyboard_alias, *args, **kwargs)
     else:
         await send_msg(update, context, text_alias, keyboard_alias, *args, **kwargs)
@@ -101,7 +108,7 @@ async def delete_all_messages(update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
-    if context.chat_data.last_keyboard_type != "inline":
+    if context.chat_data.last_keyboard_type == "reply":
         await clear_keyboard(update, context)
 
     try:
@@ -113,8 +120,25 @@ async def delete_all_messages(update: Update, context: BspuContext):
         context.chat_data.msg_clear()
 
 
+async def delete_message_at_index(update: Update, context: BspuContext, index: int = -1):
+    if TYPE_CHECKING:
+        assert context.chat_data is not None
+
+    if abs(index) > len(context.chat_data.last_messages):
+        return ValueError("Trying to delete a message at a nonexistent index")
+
+    if index == -1 and context.chat_data.last_keyboard_type == "reply":
+        await clear_keyboard(update, context)
+
+    try:
+        await context.chat_data.last_messages.pop(index).delete()
+    except telegram_error.BadRequest:
+        pass
+
+
 async def clear_keyboard(update: Update, context: BspuContext):
-    """Clears keyboard (and/or relevant context) about it"""
+    """Clears keyboard (and/or relevant context) about it.
+    Can be called when there is no keyboard to clear context about it."""
     if TYPE_CHECKING:
         assert update.effective_user is not None
         assert context.chat_data is not None

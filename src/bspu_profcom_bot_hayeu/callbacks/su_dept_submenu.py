@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from telegram import Update
 
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
-from bspu_profcom_bot_hayeu.callbacks import admin_menu, common
+from bspu_profcom_bot_hayeu.callbacks import common
 from bspu_profcom_bot_hayeu.context import BspuContext
 from bspu_profcom_bot_hayeu.db import Department
 from bspu_profcom_bot_hayeu.services import messaging, messaging_helpers
@@ -38,23 +38,6 @@ async def create_new_dept(update: Update, context: BspuContext):
 
     dept_name = update.message.text
 
-    if not await Department.is_unique(dept_name):
-        original = await Department.pull(Department.name_to_id(dept_name))
-        if TYPE_CHECKING:
-            assert original is not None
-        msg_text = context.bot_data.texts["dept_already_exists"]
-        await common.choice(
-            update,
-            context,
-            msg_text(original=original.name, new=dept_name),
-            msg_text.parse_mode,
-            "confirm",
-            partial(rename_dept, original, dept_name),
-            "go_back",
-            admin_menu.admin_su_settings,
-        )
-        return
-
     await Department.new(dept_name)
 
     msg_text = context.bot_data.texts["confirm_department_creation"]
@@ -64,17 +47,7 @@ async def create_new_dept(update: Update, context: BspuContext):
         msg_text(dept_name),
         msg_text.parse_mode,
         "okay",
-        admin_menu.admin_su_settings,
-    )
-
-
-async def rename_dept(dept: Department, new_name: str, update: Update, context: BspuContext):
-
-    await dept.rename(new_name)
-
-    msg_text = context.bot_data.texts["confirm_department_rename"]
-    await common.pop_up(
-        update, context, msg_text(), msg_text.parse_mode, "okay", admin_menu.admin_su_settings
+        su_admin_dept_submenu,
     )
 
 
@@ -94,7 +67,7 @@ async def enter_new_dept_name(update: Update, context: BspuContext):
         msg_text(messaging_helpers._seq_to_md_list(dept_names)),
         msg_text.parse_mode,
         "go_back",
-        admin_menu.admin_su_settings,
+        su_admin_dept_submenu,
     )
 
 
@@ -109,7 +82,57 @@ async def recover_dept(dept: Department, update: Update, context: BspuContext):
         msg_text(dept.name),
         msg_text.parse_mode,
         "okay",
-        admin_menu.admin_su_settings,
+        su_admin_dept_submenu,
+    )
+
+
+async def rename_dept(dept: Department, update: Update, context: BspuContext):
+    if TYPE_CHECKING:
+        assert update.message is not None
+        assert update.message.text is not None
+
+    new_name = update.message.text
+    original = dept.name
+
+    dept = await dept.rename(new_name)
+
+    msg_text = context.bot_data.texts["confirm_department_rename"]
+    await common.pop_up(
+        update,
+        context,
+        msg_text(original=original, new=new_name),
+        msg_text.parse_mode,
+        "okay",
+        su_admin_dept_submenu,
+    )
+
+
+async def enter_renamed_dept_name(dept: Department, update: Update, context: BspuContext):
+    if TYPE_CHECKING:
+        assert context.chat_data is not None
+
+    context.chat_data.apply_after_update["input_parser"] = partial(rename_dept, dept)
+
+    msg_text = context.bot_data.texts["enter_renamed_dept_name"]
+    await common.pop_up(
+        update,
+        context,
+        msg_text(dept.name),
+        msg_text.parse_mode,
+        "go_back",
+        su_admin_dept_submenu,
+    )
+
+
+@cr.register("select_dept_to_rename")
+async def select_dept_to_rename(update: Update, context: BspuContext):
+    await common.display_departments_selector_keyboard(
+        update,
+        context,
+        False,
+        "select_dept_to_rename",
+        enter_renamed_dept_name,
+        su_admin_dept_submenu,
     )
 
 
@@ -125,7 +148,7 @@ async def delete_dept(dept: Department, update: Update, context: BspuContext):
             "recover",
             partial(recover_dept, dept),
             "go_back",
-            admin_menu.admin_su_settings,
+            su_admin_dept_submenu,
         )
         return
 
@@ -141,7 +164,7 @@ async def delete_dept(dept: Department, update: Update, context: BspuContext):
         msg_text(dept.name),
         msg_text.parse_mode,
         "okay",
-        admin_menu.admin_su_settings,
+        su_admin_dept_submenu,
     )
 
 
@@ -153,5 +176,5 @@ async def select_dept_for_deletion(update: Update, context: BspuContext):
         True,
         "select_dept_to_delete",
         delete_dept,
-        admin_menu.admin_su_settings,
+        su_admin_dept_submenu,
     )

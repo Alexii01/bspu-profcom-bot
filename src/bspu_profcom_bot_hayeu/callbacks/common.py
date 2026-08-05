@@ -8,7 +8,7 @@ from telegram.constants import ParseMode
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.context import BspuContext
-from bspu_profcom_bot_hayeu.db import Admin, Department
+from bspu_profcom_bot_hayeu.db import Admin, Department, Question
 from bspu_profcom_bot_hayeu.models import Keyboard
 from bspu_profcom_bot_hayeu.services import messaging, messaging_helpers
 
@@ -17,12 +17,15 @@ async def display_departments_selector_keyboard(
     update: Update,
     context: BspuContext,
     show_all: bool,
-    text_alias: str,
+    text_alias: str | None,
     departments_callback: Callable[
         [Department, Update, BspuContext],
         Coroutine[Any, Any, None],
     ],
     return_callback: Callback,
+    additional_buttons: dict[str, Callback] | None = None,
+    additional_repr: dict[str, str] | None = None,
+    **kwargs,
 ):
     if show_all:
         deps = await Department.pull_all()
@@ -34,19 +37,20 @@ async def display_departments_selector_keyboard(
 
     keyboard = Keyboard(
         "inline",
-        {dep.id: partial(departments_callback, dep) for dep in deps} | {"go_back": return_callback},
+        (additional_buttons or {})
+        | {str(dep.id): partial(departments_callback, dep) for dep in deps}
+        | {"go_back": return_callback},
     )
-    buttons: dict[str, str] = {dep.id: dep.name for dep in deps} | {
-        "go_back": context.bot_data.buttons["go_back"]
-    }
+    buttons: dict[str, str] = (
+        {str(dep.id): dep.name for dep in deps}
+        | (additional_repr or {})
+        | {"go_back": context.bot_data.buttons["go_back"]}
+    )
 
     markup = messaging_helpers._log_one_time_keyboard(context, keyboard, buttons)
 
     await messaging.update_last_or_send_msg(
-        update,
-        context,
-        text_alias,
-        reply_markup=markup,
+        update, context, text_alias, reply_markup=markup, **kwargs
     )
 
 
@@ -84,6 +88,31 @@ async def display_admin_selector_keyboard(
         context,
         text_alias,
         reply_markup=markup,
+    )
+
+
+async def display_question_and_menu(
+    update: Update,
+    context: BspuContext,
+    question: Question,
+    text_alias: str,
+    keyboard_alias: str,
+    additional_params: dict[str, Any],
+    **kwargs,
+):
+    await messaging.update_last_or_send_msg(
+        update, context, text=question.message, parse_mode=ParseMode.HTML
+    )
+
+    msg_text = context.bot_data.texts[text_alias]
+    params = {"asked_date": str(question.asked_date.date())} | additional_params
+    await messaging.send_msg(
+        update,
+        context,
+        text=msg_text(**params),
+        parse_mode=msg_text.parse_mode,
+        keyboard_alias=keyboard_alias,
+        **kwargs,
     )
 
 

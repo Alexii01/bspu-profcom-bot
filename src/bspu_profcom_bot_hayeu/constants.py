@@ -1,6 +1,8 @@
 from enum import IntFlag
 from pathlib import Path
 
+from telegram.constants import MessageLimit
+
 MODULE_DIR = Path(__file__).resolve().parent.parent
 DATA_PREFIX = MODULE_DIR.parent / "data"
 
@@ -22,3 +24,7 @@ class AdminFlags(IntFlag):
     IS_MAINTAINER = 2
     NAME_UPDATES = 4
     LOG_ERRORS = 8
+
+
+MIN_QUESTION_LEN = 20
+MAX_QUESTION_LEN = MessageLimit.MAX_TEXT_LENGTH
