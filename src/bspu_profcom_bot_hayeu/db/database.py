@@ -36,6 +36,12 @@ async def __create_tables_if_not_present():
                 name TEXT,
                 plan_removal INT
             );
+
+            CREATE TABLE IF NOT EXISTS {constants.AnswerTemplatesTable} (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                text TEXT
+            );
             """)
 
 

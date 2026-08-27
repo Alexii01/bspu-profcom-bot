@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Coroutine, Iterable
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -7,13 +7,15 @@ from telegram import (
     ReplyKeyboardMarkup,
     Update,
 )
+from telegram.constants import InlineKeyboardButtonLimit
 
+from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.callbacks import error as error_views
 from bspu_profcom_bot_hayeu.context import BspuContext
 from bspu_profcom_bot_hayeu.models import Keyboard
 
 
-async def _reply_keyboard_input_parser(keyboard: Keyboard, update: Update, context: BspuContext):
+async def reply_keyboard_input_parser(keyboard: Keyboard, update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert update.message is not None
         assert update.message.text is not None
@@ -27,7 +29,7 @@ async def _reply_keyboard_input_parser(keyboard: Keyboard, update: Update, conte
         )
 
 
-def _resolve_keyboard(
+def resolve_keyboard(
     context: BspuContext,
     keyboard_alias: str | None,
 ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup | None:
@@ -42,7 +44,7 @@ def _resolve_keyboard(
 
     if kbd.type == "reply":
         context.chat_data.apply_after_update["input_parser"] = partial(
-            _reply_keyboard_input_parser, kbd
+            reply_keyboard_input_parser, kbd
         )
         return kbd(context.bot_data.buttons)  # type: ignore
     else:
@@ -51,8 +53,11 @@ def _resolve_keyboard(
         return markup
 
 
-def _log_one_time_keyboard(
-    context: BspuContext, keyboard: Keyboard, buttons: dict[str, str] | None = None
+def log_one_time_keyboard(
+    context: BspuContext,
+    keyboard: Keyboard,
+    buttons: dict[str, str] | None = None,
+    inline_button_params: dict[str, dict[str, Any]] | None = None,
 ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
     if TYPE_CHECKING:
         assert context.chat_data is not None
@@ -65,12 +70,12 @@ def _log_one_time_keyboard(
     if keyboard.type == "reply":
         return keyboard(buttons)  # type: ignore
     else:
-        [markup, representation] = keyboard(buttons)  # type: ignore
+        [markup, representation] = keyboard(buttons, inline_button_params)  # type: ignore
         context.chat_data.apply_after_update["token_store"] = representation
         return markup
 
 
-def _set_kwargs_defaults(
+def set_kwargs_defaults(
     update: Update,
     context: BspuContext,
     text_alias: str | None,
@@ -85,10 +90,10 @@ def _set_kwargs_defaults(
         kwargs.setdefault("text", context.bot_data.texts[text_alias]())
         kwargs.setdefault("parse_mode", context.bot_data.texts[text_alias].parse_mode)
 
-    kwargs.setdefault("reply_markup", _resolve_keyboard(context, keyboard_alias))
+    kwargs.setdefault("reply_markup", resolve_keyboard(context, keyboard_alias))
 
 
-def _apply_context_update(context: BspuContext):
+def apply_context_update(context: BspuContext):
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
@@ -98,5 +103,39 @@ def _apply_context_update(context: BspuContext):
     context.chat_data.apply_after_update.clear()
 
 
-def _seq_to_md_list(items: Iterable[str] | None, delim: str = "- {}\n") -> str:
+def seq_to_md_list(items: Iterable[str] | None, delim: str = "- {}\n") -> str:
     return "".join([delim.format(item) for item in items]) if items else ""
+
+
+def selector_keyboard[T](
+    context: BspuContext,
+    items: Iterable[T],
+    key_attr: str,
+    display_attr: str,
+    callback: Callable[
+        [T, Update, BspuContext],
+        Coroutine[Any, Any, None],
+    ],
+    return_callback: Callback,
+    additional_buttons: dict[str, Callback] | None = None,
+    additional_repr: dict[str, str] | None = None,
+) -> tuple[Keyboard, dict[str, str]]:
+    keyboard = Keyboard(
+        "inline",
+        (additional_buttons or {})
+        | {str(getattr(i, key_attr)): partial(callback, i) for i in items}
+        | {"go_back": return_callback},
+    )
+
+    buttons: dict[str, str] = (
+        (additional_repr or {})
+        | {
+            str(getattr(i, key_attr)): getattr(i, display_attr)[
+                : InlineKeyboardButtonLimit.MAX_COPY_TEXT
+            ]
+            for i in items
+        }
+        | {"go_back": context.bot_data.buttons["go_back"]}
+    )
+
+    return (keyboard, buttons)

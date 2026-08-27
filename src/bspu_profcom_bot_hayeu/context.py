@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from json import JSONEncoder
 from typing import Any, Literal
+from uuid import UUID
 
 from telegram import Message
 from telegram.ext import (
@@ -26,7 +27,7 @@ class BotContext:
     # Message-managing
     token_store: dict[str, Callback] = field(default_factory=dict)
     # Admin stuff
-    reserved_questions: set[Question] = field(default_factory=set)
+    reserved_questions: list[UUID] = field(default_factory=list)
     # Maintainer stuff
     error_logs: list[str] = field(default_factory=list)
 

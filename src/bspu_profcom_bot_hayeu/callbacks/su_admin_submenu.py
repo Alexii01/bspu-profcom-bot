@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 from telegram import Update
 
+
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.callbacks import admin_menu, common
@@ -25,8 +26,8 @@ async def su_admin_admin_submenu(update: Update, context: BspuContext):
         update,
         context,
         text=text(
-            admins=messaging_helpers._seq_to_md_list(admins),
-            su_admins=messaging_helpers._seq_to_md_list(su_admins),
+            admins=messaging_helpers.seq_to_md_list(admins),
+            su_admins=messaging_helpers.seq_to_md_list(su_admins),
         ),
         parse_mode=text.parse_mode,
         keyboard_alias="su_admin_admin_settings",

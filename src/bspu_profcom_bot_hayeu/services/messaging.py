@@ -14,8 +14,8 @@ from telegram.constants import ParseMode
 from bspu_profcom_bot_hayeu.context import BspuContext
 
 from .messaging_helpers import (
-    _apply_context_update,
-    _set_kwargs_defaults,
+    apply_context_update,
+    set_kwargs_defaults,
 )
 
 
@@ -33,7 +33,7 @@ async def update_last_msg(
     if not context.chat_data.last_messages:
         raise RuntimeError("Trying to update message which doesn't exist")
 
-    _set_kwargs_defaults(update, context, text_alias, keyboard_alias, kwargs)
+    set_kwargs_defaults(update, context, text_alias, keyboard_alias, kwargs)
 
     if context.chat_data.last_keyboard_type == "reply" or isinstance(
         kwargs.get("reply_markup", None), ReplyKeyboardMarkup
@@ -47,7 +47,7 @@ async def update_last_msg(
         msg = await context.chat_data.last_messages[-1].edit_text(*args, **kwargs)
         assert isinstance(msg, Message)
 
-        _apply_context_update(context)
+        apply_context_update(context)
         context.chat_data.last_messages[-1] = msg
 
 
@@ -66,12 +66,12 @@ async def send_msg(
     if context.chat_data.last_keyboard_type:
         await clear_keyboard(update, context)
 
-    _set_kwargs_defaults(update, context, text_alias, keyboard_alias, kwargs)
+    set_kwargs_defaults(update, context, text_alias, keyboard_alias, kwargs)
     kwargs.setdefault("chat_id", update.effective_user.id)
 
     msg = await context.bot.send_message(*args, **kwargs)
 
-    _apply_context_update(context)
+    apply_context_update(context)
     context.chat_data.last_messages.append(msg)
 
 

@@ -7,10 +7,11 @@ import aiosqlite
 
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.db.connect import database as db
+from bspu_profcom_bot_hayeu.db.db_model_base import DbModel
 
 
 @dataclasses.dataclass(frozen=True)
-class Department:
+class Department(DbModel):
     id: UUID
     name: str
     plan_removal: bool
@@ -56,7 +57,7 @@ class Department:
 
         async with aiosqlite.connect(db) as conn:
             await conn.execute(
-                f"INSERT INTO {constants.DepartmentsTable} VALUES (:id, ]]]]]]]]]:name, :plan_removal)",
+                f"INSERT INTO {constants.DepartmentsTable} VALUES (:id, :name, :plan_removal)",
                 instance.to_row(),
             )
             await conn.commit()

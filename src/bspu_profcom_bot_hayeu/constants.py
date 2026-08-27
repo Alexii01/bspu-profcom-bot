@@ -17,6 +17,7 @@ Tmp = DATA_PREFIX / "runtime" / "tmp.txt"
 AdminTable = "admins"
 QuestionsTable = "questions"
 DepartmentsTable = "departments"
+AnswerTemplatesTable = "answer_templates"
 
 
 class AdminFlags(IntFlag):

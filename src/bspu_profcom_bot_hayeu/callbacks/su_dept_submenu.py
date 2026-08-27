@@ -23,8 +23,8 @@ async def su_admin_dept_submenu(update: Update, context: BspuContext):
         update,
         context,
         text=text(
-            active=messaging_helpers._seq_to_md_list(active_deps),
-            marked=messaging_helpers._seq_to_md_list(to_be_removed),
+            active=messaging_helpers.seq_to_md_list(active_deps),
+            marked=messaging_helpers.seq_to_md_list(to_be_removed),
         ),
         parse_mode=text.parse_mode,
         keyboard_alias="su_admin_dept_settings",
@@ -64,7 +64,7 @@ async def enter_new_dept_name(update: Update, context: BspuContext):
     await common.pop_up(
         update,
         context,
-        msg_text(messaging_helpers._seq_to_md_list(dept_names)),
+        msg_text(messaging_helpers.seq_to_md_list(dept_names)),
         msg_text.parse_mode,
         "go_back",
         su_admin_dept_submenu,
@@ -137,7 +137,6 @@ async def select_dept_to_rename(update: Update, context: BspuContext):
 
 
 async def delete_dept(dept: Department, update: Update, context: BspuContext):
-
     if dept.plan_removal:
         msg_text = context.bot_data.texts["dept_already_marked_deleted"]
         await common.choice(

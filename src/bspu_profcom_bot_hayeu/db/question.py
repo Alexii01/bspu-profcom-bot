@@ -8,6 +8,7 @@ import aiosqlite
 
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.db.connect import database as db
+from bspu_profcom_bot_hayeu.db.db_model_base import DbModel
 
 
 def _optional(value, fn):
@@ -15,7 +16,7 @@ def _optional(value, fn):
 
 
 @dataclasses.dataclass(frozen=True)
-class Question:
+class Question(DbModel):
     id: UUID
     user_id: int
     department_id: UUID

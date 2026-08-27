@@ -6,12 +6,15 @@ if TYPE_CHECKING:
 import hashlib
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram.constants import InlineKeyboardButtonLimit
 
 from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
 
 
-def _build_buttons(value: dict[str, Any], callbacks: dict[str, Callback]) -> dict[str, Callback]:
+def _build_buttons(
+    value: Mapping[str, Any], callbacks: Mapping[str, Callback]
+) -> dict[str, Callback]:
     return {
         button_key: callbacks[button_value] for button_key, button_value in value["buttons"].items()
     }
@@ -24,7 +27,7 @@ class Keyboard(NamedTuple):
     @staticmethod
     def load(
         filepath: FileDescriptorOrPath,
-        callbacks: dict[str, Callback],
+        callbacks: Mapping[str, Callback],
         path: str | None = None,
     ) -> dict[str, Keyboard]:
         """Loads data from `filepath` file, first traversing nodes from `path`
@@ -40,13 +43,15 @@ class Keyboard(NamedTuple):
             for key, value in loader[path].items()
         }
 
-    def __gen_reply_keyboard(self, buttons_text: dict[str, str]) -> ReplyKeyboardMarkup:
+    def __gen_reply_keyboard(self, buttons_text: Mapping[str, str]) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup.from_column(
             [buttons_text[key] for key in self.buttons], one_time_keyboard=True
         )
 
     def __gen_inline_keyboard(
-        self, buttons_text: dict[str, str]
+        self,
+        buttons_text: Mapping[str, str],
+        button_params: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> tuple[InlineKeyboardMarkup, dict[str, Callback]]:
         representation = {
             key: hashlib.sha256(buttons_text[key].encode("utf-8")).hexdigest()
@@ -56,7 +61,13 @@ class Keyboard(NamedTuple):
         return (
             InlineKeyboardMarkup.from_column(
                 [
-                    InlineKeyboardButton(text=buttons_text[key], callback_data=representation[key])
+                    InlineKeyboardButton(
+                        text=buttons_text[key][: InlineKeyboardButtonLimit.MAX_COPY_TEXT],
+                        **(
+                            (button_params or {}).get(key, None)
+                            or {"callback_data": representation[key]}
+                        ),
+                    )
                     for key in self.buttons
                 ]
             ),
@@ -64,9 +75,11 @@ class Keyboard(NamedTuple):
         )
 
     def __call__(
-        self, buttons: dict[str, str]
+        self,
+        buttons: Mapping[str, str],
+        inline_button_params: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> ReplyKeyboardMarkup | tuple[InlineKeyboardMarkup, dict[str, Callback]]:
         if self.type == "inline":
-            return self.__gen_inline_keyboard(buttons)
+            return self.__gen_inline_keyboard(buttons, inline_button_params)
         else:
             return self.__gen_reply_keyboard(buttons)

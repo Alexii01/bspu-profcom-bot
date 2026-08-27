@@ -70,6 +70,7 @@ async def _main_menu(update: Update, context: BspuContext, text_alias: str):
         await return_to_main_menu(update, context)
         return
 
+    # TODO: <-- Refactor this out into a separate gen_admin_keyboard(context) -> Keyboard
     optional_buttons: dict[str, Callback] = {}
 
     if context.chat_data.user.flags & constants.AdminFlags.IS_SUPER:
@@ -80,8 +81,9 @@ async def _main_menu(update: Update, context: BspuContext, text_alias: str):
     kbd = Keyboard(
         "inline", dict(context.bot_data.keyboards["admin_menu"].buttons) | optional_buttons
     )
+    # -->
 
-    markup = messaging_helpers._log_one_time_keyboard(context, kbd, context.bot_data.buttons)
+    markup = messaging_helpers.log_one_time_keyboard(context, kbd)
 
     await messaging.update_last_or_send_msg(update, context, text_alias, reply_markup=markup)
 
@@ -122,16 +124,6 @@ async def admin_su_settings(update: Update, context: BspuContext):
     )
 
 
-@cr.register("maintainer_settings")
-async def maintainer_settings(update: Update, context: BspuContext):
-    await messaging.update_last_or_send_msg(
-        update,
-        context,
-        "maintainer_settings",
-        "maintainer_settings",
-    )
-
-
 async def process_admin_name(update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert update.message is not None
@@ -141,9 +133,11 @@ async def process_admin_name(update: Update, context: BspuContext):
 
     new_name = update.message.text
 
+    # TODO: <-- Refactor out into a separate verify_admin_name function
     if len(new_name) < 5 or len(new_name) > 100:
         # TODO: Add an error message
         pass
+    # -->
 
     context.chat_data.user = await context.chat_data.user.rename(new_name)
 
@@ -161,7 +155,7 @@ async def update_admin_name(update: Update, context: BspuContext):
 
     context.chat_data.apply_after_update["input_parser"] = process_admin_name
 
-    su_examples = messaging_helpers._seq_to_md_list(
+    su_examples = messaging_helpers.seq_to_md_list(
         await Admin.names(
             constants.AdminFlags.IS_SUPER,
             constants.AdminFlags.IS_MAINTAINER,
@@ -182,8 +176,7 @@ async def update_admin_name(update: Update, context: BspuContext):
 
 @cr.register("display_instructions")
 async def display_instructions(update: Update, context: BspuContext):
-    text = context.bot_data.texts["admin_instructions"]
-    await common.pop_up(update, context, text(), text.parse_mode, "okay", admin_settings)
+    await common.pop_up_aliased(update, context, "admin_instructions", "okay", admin_settings)
 
 
 async def start_representing_all(update: Update, context: BspuContext):
@@ -192,8 +185,9 @@ async def start_representing_all(update: Update, context: BspuContext):
 
     context.chat_data.apply_after_update["representing_department"] = "all"
 
-    msg_text = context.bot_data.texts["you_are_now_representing_all_dept"]
-    await common.pop_up(update, context, msg_text(), msg_text.parse_mode, "okay", admin_settings)
+    await common.pop_up_aliased(
+        update, context, "you_are_now_representing_all_dept", "okay", admin_settings
+    )
 
 
 async def start_representing_dept(dept: Department, update: Update, context: BspuContext):
@@ -213,14 +207,16 @@ async def select_dept_to_represent(update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
-    repr_dept: str = ""
+    repr_dept_name: str = ""
 
+    # TODO: <-- Refactor out into a function get_active_dept_name(ctx) -> str
     if context.chat_data.representing_department:
         if context.chat_data.representing_department == "all":
-            repr_dept = context.bot_data.texts["repr_all_departments"]()
+            repr_dept_name = context.bot_data.texts["repr_all_departments"]()
         else:
             dept = await Department.pull(UUID(context.chat_data.representing_department))
-            repr_dept = dept.name if dept else context.bot_data.texts["dept_not_selected"]()
+            repr_dept_name = dept.name if dept else context.bot_data.texts["dept_not_selected"]()
+    # -->
 
     msg_text = context.bot_data.texts["admin_select_dept_to_represent"]
     await common.display_departments_selector_keyboard(
@@ -232,6 +228,6 @@ async def select_dept_to_represent(update: Update, context: BspuContext):
         admin_settings,
         {"admin_settings_repr_all_departments": start_representing_all},
         context.bot_data.buttons,
-        text=msg_text(repr_dept),
+        text=msg_text(repr_dept_name),
         parse_mode=msg_text.parse_mode,
     )

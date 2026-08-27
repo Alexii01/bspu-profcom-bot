@@ -59,8 +59,9 @@ async def save_question(department: Department, update: Update, context: BspuCon
         None,
     )
 
-    msg_text = context.bot_data.texts["confirm_question_admission"]
-    await common.pop_up(update, context, msg_text(), msg_text.parse_mode, "okay", questions_menu)
+    await common.pop_up_aliased(
+        update, context, "confirm_question_admission", "okay", questions_menu
+    )
 
 
 async def await_question(department: Department, update: Update, context: BspuContext):
@@ -69,8 +70,7 @@ async def await_question(department: Department, update: Update, context: BspuCo
 
     context.chat_data.apply_after_update["input_parser"] = partial(save_question, department)
 
-    msg_text = context.bot_data.texts["now_ask_question"]
-    await common.pop_up(update, context, msg_text(), msg_text.parse_mode, "go_back", questions_menu)
+    await common.pop_up_aliased(update, context, "now_ask_question", "go_back", questions_menu)
 
 
 @cr.register("question_menu_ask_departments")
@@ -117,7 +117,7 @@ async def see_my_questions(update: Update, context: BspuContext):
 
     kbd = Keyboard("inline", questions_parsed)
 
-    markup = messaging_helpers._log_one_time_keyboard(
+    markup = messaging_helpers.log_one_time_keyboard(
         context,
         kbd,
         {str(q.id): q.message[: InlineKeyboardButtonLimit.MAX_COPY_TEXT] for q in questions}

@@ -9,11 +9,12 @@ import bcrypt
 
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.db.connect import database as db
+from bspu_profcom_bot_hayeu.db.db_model_base import DbModel
 from bspu_profcom_bot_hayeu.services import password
 
 
 @dataclasses.dataclass(frozen=True)
-class Admin:
+class Admin(DbModel):
     id: UUID
     public_name: str
     user_id: int | None
@@ -71,7 +72,6 @@ class Admin:
     def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable[Admin]:
         return [Admin._from_row(row) for row in rows]
 
-    @staticmethod
     def to_row(admin: Admin) -> dict[str, Any]:
         return {
             "id": str(admin.id),
@@ -264,7 +264,7 @@ class Admin:
                 await conn.execute(
                     f""" UPDATE {constants.AdminTable}"""
                     """ SET flags = :flags"""
-                    """ WHERE id=?""",
+                    """ WHERE id=:id""",
                     {"id": str(self.id), "flags": int(self.flags)},
                 )
                 await conn.commit()

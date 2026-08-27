@@ -8,9 +8,30 @@ from telegram.constants import ParseMode
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.context import BspuContext
-from bspu_profcom_bot_hayeu.db import Admin, Department, Question
+from bspu_profcom_bot_hayeu.db import Admin, AnswerTemplate, Department, Question
 from bspu_profcom_bot_hayeu.models import Keyboard
 from bspu_profcom_bot_hayeu.services import messaging, messaging_helpers
+
+# keyboard = Keyboard(
+#     "inline",
+#     (additional_buttons or {})
+#     | {str(dep.id): partial(departments_callback, dep) for dep in deps}
+#     | {"go_back": return_callback},
+# )
+# buttons: dict[str, str] = (
+#     {str(dep.id): dep.name for dep in deps}
+#     | (additional_repr or {})
+#     | {"go_back": context.bot_data.buttons["go_back"]}
+# )
+
+# keyboard = Keyboard(
+#     "inline",
+#     {str(admin.id): partial(admin_callback, admin) for admin in admins}
+#     | {"go_back": return_callback},
+# )
+# buttons = {str(admin.id): admin.public_name for admin in admins} | {
+#     "go_back": context.bot_data.buttons["go_back"]
+# }
 
 
 async def display_departments_selector_keyboard(
@@ -35,19 +56,18 @@ async def display_departments_selector_keyboard(
     if not deps:
         raise RuntimeError("No departments available?!")
 
-    keyboard = Keyboard(
-        "inline",
-        (additional_buttons or {})
-        | {str(dep.id): partial(departments_callback, dep) for dep in deps}
-        | {"go_back": return_callback},
-    )
-    buttons: dict[str, str] = (
-        {str(dep.id): dep.name for dep in deps}
-        | (additional_repr or {})
-        | {"go_back": context.bot_data.buttons["go_back"]}
+    [keyboard, buttons] = messaging_helpers.selector_keyboard(
+        context,
+        deps,
+        "id",
+        "name",
+        departments_callback,
+        return_callback,
+        additional_buttons,
+        additional_repr,
     )
 
-    markup = messaging_helpers._log_one_time_keyboard(context, keyboard, buttons)
+    markup = messaging_helpers.log_one_time_keyboard(context, keyboard, buttons)
 
     await messaging.update_last_or_send_msg(
         update, context, text_alias, reply_markup=markup, **kwargs
@@ -72,16 +92,11 @@ async def display_admin_selector_keyboard(
         # TODO: Add a special pop_up
         return
 
-    keyboard = Keyboard(
-        "inline",
-        {str(admin.id): partial(admin_callback, admin) for admin in admins}
-        | {"go_back": return_callback},
+    [keyboard, buttons] = messaging_helpers.selector_keyboard(
+        context, admins, "id", "public_name", admin_callback, return_callback
     )
-    buttons = {str(admin.id): admin.public_name for admin in admins} | {
-        "go_back": context.bot_data.buttons["go_back"]
-    }
 
-    markup = messaging_helpers._log_one_time_keyboard(context, keyboard, buttons)
+    markup = messaging_helpers.log_one_time_keyboard(context, keyboard, buttons)
 
     await messaging.update_last_or_send_msg(
         update,
@@ -89,6 +104,27 @@ async def display_admin_selector_keyboard(
         text_alias,
         reply_markup=markup,
     )
+
+
+async def display_template_selector_keyboard(
+    update: Update,
+    context: BspuContext,
+    text_alias: str | None,
+    callback: Callable[
+        [AnswerTemplate, Update, BspuContext],
+        Coroutine[Any, Any, None],
+    ],
+    return_callback: Callback,
+):
+    templates = await AnswerTemplate.pull_all()
+
+    [keyboard, buttons] = messaging_helpers.selector_keyboard(
+        context, templates, "id", "name", callback, return_callback
+    )
+
+    markup = messaging_helpers.log_one_time_keyboard(context, keyboard, buttons)
+
+    await messaging.update_last_or_send_msg(update, context, text_alias, reply_markup=markup)
 
 
 async def display_question_and_menu(
@@ -116,6 +152,23 @@ async def display_question_and_menu(
     )
 
 
+async def pop_up_aliased(
+    update: Update,
+    context: BspuContext,
+    text_alias: str,
+    button_alias: str,
+    callback: Callback,
+):
+    await pop_up(
+        update,
+        context,
+        context.bot_data.texts[text_alias](),
+        context.bot_data.texts[text_alias].parse_mode,
+        button_alias,
+        callback,
+    )
+
+
 async def pop_up(
     update: Update,
     context: BspuContext,
@@ -127,7 +180,7 @@ async def pop_up(
     """Sends a message with a single button"""
     keyboard = Keyboard("inline", {button_alias: callback})
 
-    markup = messaging_helpers._log_one_time_keyboard(context, keyboard)
+    markup = messaging_helpers.log_one_time_keyboard(context, keyboard)
 
     await messaging.update_last_or_send_msg(
         update,
@@ -151,7 +204,7 @@ async def choice(
     """Sends a message with a two buttons"""
     keyboard = Keyboard("inline", {first_alias: first_callback, second_alias: second_callback})
 
-    markup = messaging_helpers._log_one_time_keyboard(context, keyboard)
+    markup = messaging_helpers.log_one_time_keyboard(context, keyboard)
 
     await messaging.update_last_or_send_msg(
         update,
