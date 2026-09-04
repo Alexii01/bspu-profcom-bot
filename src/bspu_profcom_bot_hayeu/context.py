@@ -1,8 +1,9 @@
 import functools
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from json import JSONEncoder
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from telegram import Message
@@ -12,7 +13,7 @@ from telegram.ext import (
 )
 
 from bspu_profcom_bot_hayeu.callback import Callback
-from bspu_profcom_bot_hayeu.db import Admin, Question
+from bspu_profcom_bot_hayeu.db import Admin
 from bspu_profcom_bot_hayeu.models import Keyboard, Text
 
 
@@ -27,7 +28,7 @@ class BotContext:
     # Message-managing
     token_store: dict[str, Callback] = field(default_factory=dict)
     # Admin stuff
-    reserved_questions: list[UUID] = field(default_factory=list)
+    reserved_questions: dict[UUID, tuple[UUID, datetime]] = field(default_factory=dict)
     # Maintainer stuff
     error_logs: list[str] = field(default_factory=list)
 
@@ -44,32 +45,39 @@ class ChatContext:
     # Admin menu
     user: Admin | None = None
     representing_department: str | Literal["all"] | None = None
-    skip_questions: list[Question] = field(default_factory=list)
+    skip_questions: set[UUID] = field(default_factory=set)
 
     def msg_clear(self):
+        """Use to "forget" about previous messages and keyboards (make sure to remove old keyboards beforehand)"""
         self.last_messages.clear()
         self.keyboard_clear()
 
     def keyboard_clear(self):
+        """Use to "forget" about previous keyboards (make sure to remove old keyboards beforehand)"""
         self.last_keyboard_type = None
         self.input_parser = None
         self.token_store.clear()
 
     def admin_clear(self):
+        """Use to "forget" that user is admin (doesn't affect the database, cleared data is easily recoverable)"""
         self.user = None
         self.skip_questions.clear()
 
     def clear(self):
+        """Use when you jump between menus. "Forgets" previous messages, keyboards, admin data"""
         self.msg_clear()
         self.keyboard_clear()
         self.admin_clear()
 
     def full_clear(self):
+        """Clears or nullifies absolutely every field"""
         self.clear()
         self.representing_department = None
         self.apply_after_update.clear()
 
     def reset(self):
+        """Unlike `full_clear` this method doesn't use `clear()` functions, every variable is
+        assigned `None` or its appropriate type's empty instance (i.e. `[]` or `{}`)"""
         self.last_messages = []
         self.last_keyboard_type = None
         self.input_parser = None
@@ -77,16 +85,27 @@ class ChatContext:
         self.apply_after_update = {}
         self.user = None
         self.representing_department = None
-        self.answering_question = None
         self.skip_questions = []
-        self.asking_department = None
-        self.viewing_question = None
-        self.asked_questions = []
 
 
 class BspuContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
     def __init__(self, application, chat_id=None, user_id=None):
         super().__init__(application, chat_id, user_id)
+
+    @property
+    def reserved_question_id(self) -> UUID:
+        if TYPE_CHECKING:
+            assert self.chat_data is not None
+            assert self.chat_data.user is not None
+
+        return self.bot_data.reserved_questions[self.chat_data.user.id][0]
+
+    def pop_reserved_question(self):
+        if TYPE_CHECKING:
+            assert self.chat_data is not None
+            assert self.chat_data.user is not None
+
+        self.bot_data.reserved_questions.pop(self.chat_data.user.id)
 
 
 class BotContextEncoder(JSONEncoder):

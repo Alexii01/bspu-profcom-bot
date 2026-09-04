@@ -43,14 +43,10 @@ async def _main_menu_to_view(update: Update, context: BspuContext, text_alias: s
     if TYPE_CHECKING:
         assert update.effective_user is not None
 
-    text = context.bot_data.texts[text_alias]
-    await messaging.send_stray(
-        context, update.effective_user.id, text(), parse_mode=text.parse_mode
-    )
     await messaging.update_last_or_send_msg(
         update,
         context,
-        "main_menu",
+        text_alias,
         "main_menu",
     )
 

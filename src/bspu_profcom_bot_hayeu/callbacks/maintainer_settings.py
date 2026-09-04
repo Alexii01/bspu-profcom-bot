@@ -6,6 +6,7 @@ from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.callbacks import common
 from bspu_profcom_bot_hayeu.context import BspuContext
+from bspu_profcom_bot_hayeu.db import Admin
 from bspu_profcom_bot_hayeu.services import messaging
 
 cr = CallbackRegistry()
@@ -65,3 +66,20 @@ async def download_log(update: Update, context: BspuContext):
 @cr.register("download_db")
 async def download_db(update: Update, context: BspuContext):
     await download_file(update, context, str(constants.DatabasePath))
+
+
+@cr.register("create_su_admin")
+async def create_admin(update: Update, context: BspuContext):
+    [_, passwd] = await Admin.new(
+        name_base=context.bot_data.texts["default_admin_name"]._text,
+        flags=constants.AdminFlags.IS_SUPER,
+    )
+
+    await common.pop_up(
+        update,
+        context,
+        text=context.bot_data.texts["new_admin_is"](passwd),
+        parse_mode=context.bot_data.texts["new_admin_is"].parse_mode,
+        button_alias="okay",
+        callback=maintainer_settings,
+    )

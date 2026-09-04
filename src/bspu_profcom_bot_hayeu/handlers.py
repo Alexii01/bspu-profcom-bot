@@ -13,6 +13,8 @@ from bspu_profcom_bot_hayeu.db import Admin
 from bspu_profcom_bot_hayeu.services import messaging
 from bspu_profcom_bot_hayeu.services.bot_data_setup import post_init
 
+logger = logging.getLogger(__name__)
+
 
 def _retrieve_callback(context: BspuContext, data: str) -> Callback:
     if TYPE_CHECKING:
@@ -122,7 +124,7 @@ def _err_str(update: object, context: BspuContext):
         f"{tb_string}"
     )
 
-    logging.error(error_str)
+    logger.error(error_str)
 
     return error_str
 
@@ -152,7 +154,7 @@ async def error_handler(update: object | None, context: BspuContext):
                 assert admin.user_id is not None
 
             await messaging.send_stray(
-                context,
+                context.bot,
                 admin.user_id,
                 context.bot_data.texts["error_arrived"](count=len(context.bot_data.error_logs)),
                 context.bot_data.texts["error_arrived"].parse_mode,

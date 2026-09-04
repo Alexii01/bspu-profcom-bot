@@ -29,3 +29,5 @@ class AdminFlags(IntFlag):
 
 MIN_QUESTION_LEN = 20
 MAX_QUESTION_LEN = MessageLimit.MAX_TEXT_LENGTH
+
+MAX_LEASE_MINUTES = 20

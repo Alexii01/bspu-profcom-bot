@@ -1,6 +1,7 @@
 import dataclasses
-from collections.abc import Iterable
+from collections.abc import Callable, Coroutine, Iterable
 from datetime import datetime
+from functools import partial
 from typing import Any, Self
 from uuid import UUID, uuid4
 
@@ -120,80 +121,66 @@ class Question(DbModel):
             return Question.from_rows(await cursor.fetchall())
 
     @staticmethod
-    async def _pull_oldest() -> Question | None:
+    async def _pull_oldest(offset: int = 0) -> Question | None:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"""
                     SELECT *
                     FROM {constants.QuestionsTable}
-                    ORDER BY asked_date
-                    ASC LIMIT 1
+                    ORDER BY asked_date ASC
+                    LIMIT 1 OFFSET :offset
                 """,
+                {"offset": offset},
             )
             return Question.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def _pull_oldest_from_dept(dept: UUID) -> Question | None:
+    async def _pull_oldest_from_dept(dept: UUID, offset: int = 0) -> Question | None:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
                 f"""
                     SELECT *
                     FROM {constants.QuestionsTable}
-                    WHERE department=:dept
-                    ORDER BY asked_date
-                    ASC LIMIT 1
+                    WHERE department_id=:dept
+                    ORDER BY asked_date ASC
+                    LIMIT 1 OFFSET :offset
                 """,
-                {"dept": str(dept)},
+                {"dept": str(dept), "offset": offset},
             )
             return Question.from_row(await cursor.fetchone())
 
-    @staticmethod
-    async def _pull_oldest_except(ids: list[UUID]) -> Question | None:
-        async with aiosqlite.connect(db) as conn:
-            conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(
-                """
-                        SELECT *
-                        FROM {}
-                        WHERE NOT IN ({})
-                        ORDER BY asked_date
-                        ASC LIMIT 1
-                """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
-                [str(id) for id in ids],
-            )
-            return Question.from_row(await cursor.fetchone())
+    # Callable[
+    #         [T, Update, BspuContext],
+    #         Coroutine[Any, Any, None],
+    #     ],
 
     @staticmethod
-    async def _pull_oldest_from_dept_except(dept: UUID, ids: list[UUID]) -> Question | None:
-        async with aiosqlite.connect(db) as conn:
-            conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute(
-                """
-                        SELECT *
-                        FROM {}
-                        WHERE department=?  AND id NOT IN ({})
-                        ORDER BY asked_date
-                        ASC LIMIT 1
-                """.format(constants.QuestionsTable, ", ".join("?" for _ in ids)),
-                [str(dept)] + [str(id) for id in ids],
-            )
-            return Question.from_row(await cursor.fetchone())
+    async def _skip_reserved_questions(
+        avoid_ids: set[UUID] | None,
+        request_func: Callable[[int], Coroutine[Any, Any, Question | None]],
+    ) -> Question | None:
+        offset = 0
+        q = await request_func(offset)
+
+        if avoid_ids:
+            while q is not None and q.id in avoid_ids:
+                offset += 1
+                q = await request_func(offset)
+
+        return q
 
     @staticmethod
     async def pull_oldest(
-        dept: UUID | None = None, avoid_ids: list[UUID] | None = None
+        dept: UUID | None = None, avoid_ids: set[UUID] | None = None
     ) -> Question | None:
         """Pulls oldest question"""
-        if dept and avoid_ids:
-            return await Question._pull_oldest_from_dept_except(dept, avoid_ids)
-        elif not dept and avoid_ids:
-            return await Question._pull_oldest_except(avoid_ids)
-        elif dept and not avoid_ids:
-            return await Question._pull_oldest_from_dept(dept)
-        else:
-            return await Question._pull_oldest()
+        request_func = (
+            partial(Question._pull_oldest_from_dept, dept) if dept else Question._pull_oldest
+        )
+
+        return await Question._skip_reserved_questions(avoid_ids, request_func)
 
     @staticmethod
     async def delete_by_id(id: UUID):
@@ -223,7 +210,7 @@ class Question(DbModel):
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
-                    f"UPDATE {constants.QuestionsTable} SET department=:dept WHERE id=:id",
+                    f"UPDATE {constants.QuestionsTable} SET department_id=:dept WHERE id=:id",
                     {
                         "dept": str(dept),
                         "id": str(self.id),

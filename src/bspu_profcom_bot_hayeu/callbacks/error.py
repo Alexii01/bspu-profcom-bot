@@ -1,10 +1,8 @@
-import html
 import inspect
 import json
 from typing import TYPE_CHECKING
 
 from telegram import Update
-from telegram import constants as telegram_constants
 
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.context import BspuContext, ChatContextEncoder
@@ -36,12 +34,21 @@ async def programmer_error(
 
     d = inspect.stack()[1]
 
+    msg_text = context.bot_data.texts["dev_error_msg"]
+    params = {
+        "callsite": f'File "{d.filename}", line {d.lineno}, in {d.function}',
+        "chat_data": json.dumps(
+            context.chat_data,
+            indent=2,
+            ensure_ascii=False,
+            cls=ChatContextEncoder,
+        ),
+        "additional_text": additional_text or "",
+    }
+
     await messaging.send_stray(
-        context,
+        context.bot,
         chat_id=update.effective_user.id,
-        text=f"Callsite:\n<pre>{html.escape(d.filename)}:"
-        f"{html.escape(d.function)}:{d.lineno}</pre>\n"
-        f"<pre>chat_data = {html.escape(json.dumps(context.chat_data, indent=2, ensure_ascii=False, cls=ChatContextEncoder))}</pre>\n"
-        f"{html.escape(additional_text) if additional_text else ''}",
-        parse_mode=telegram_constants.ParseMode.HTML,
+        text=msg_text(**params),
+        parse_mode=msg_text.parse_mode,
     )

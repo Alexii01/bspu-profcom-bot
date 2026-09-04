@@ -1,4 +1,5 @@
 from collections.abc import Callable, Coroutine, Iterable
+from datetime import datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -8,11 +9,22 @@ from telegram import (
     Update,
 )
 from telegram.constants import InlineKeyboardButtonLimit
+from telegram.ext import Application
 
+from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.callbacks import error as error_views
-from bspu_profcom_bot_hayeu.context import BspuContext
+from bspu_profcom_bot_hayeu.callbacks.answering_questions import (
+    force_admin_out_of_answering_question,
+)
+from bspu_profcom_bot_hayeu.context import BspuContext, ChatContext
+from bspu_profcom_bot_hayeu.db import Admin
 from bspu_profcom_bot_hayeu.models import Keyboard
+
+
+def assert_not_none[T](v: T | None) -> T:
+    assert v is not None
+    return v
 
 
 async def reply_keyboard_input_parser(keyboard: Keyboard, update: Update, context: BspuContext):
@@ -25,11 +37,11 @@ async def reply_keyboard_input_parser(keyboard: Keyboard, update: Update, contex
         await keyboard.buttons[context.bot_data.buttons_inv[update.message.text]](update, context)
     else:
         await error_views.programmer_error(
-            update, context, f"Haven't found {update.message.text} in {btns}"
+            update, context, f'Haven\'t found "{update.message.text}" in {btns}'
         )
 
 
-def resolve_keyboard(
+def resolve_keyboard_alias(
     context: BspuContext,
     keyboard_alias: str | None,
 ) -> InlineKeyboardMarkup | ReplyKeyboardMarkup | None:
@@ -65,32 +77,41 @@ def log_one_time_keyboard(
     if not buttons:
         buttons = context.bot_data.buttons
 
-    context.chat_data.apply_after_update["last_keyboard_type"] = keyboard.type
+    return mini_log_one_time_keyboard(context.chat_data, keyboard, buttons, inline_button_params)
+
+
+# TODO: Move to a separate file
+def mini_log_one_time_keyboard(
+    chat_data: ChatContext,
+    keyboard: Keyboard,
+    buttons: dict[str, str],
+    inline_button_params: dict[str, dict[str, Any]] | None = None,
+) -> InlineKeyboardMarkup | ReplyKeyboardMarkup:
+
+    chat_data.apply_after_update["last_keyboard_type"] = keyboard.type
 
     if keyboard.type == "reply":
         return keyboard(buttons)  # type: ignore
     else:
         [markup, representation] = keyboard(buttons, inline_button_params)  # type: ignore
-        context.chat_data.apply_after_update["token_store"] = representation
+        chat_data.apply_after_update["token_store"] = representation
         return markup
 
 
 def set_kwargs_defaults(
-    update: Update,
+    update: Update | None,
     context: BspuContext,
     text_alias: str | None,
     keyboard_alias: str | None,
     kwargs: dict[str, Any],
 ):
-    if TYPE_CHECKING:
-        assert update.effective_user is not None
-        assert context.chat_data is not None
+    del update
 
     if text_alias:
         kwargs.setdefault("text", context.bot_data.texts[text_alias]())
         kwargs.setdefault("parse_mode", context.bot_data.texts[text_alias].parse_mode)
 
-    kwargs.setdefault("reply_markup", resolve_keyboard(context, keyboard_alias))
+    kwargs.setdefault("reply_markup", resolve_keyboard_alias(context, keyboard_alias))
 
 
 def apply_context_update(context: BspuContext):
@@ -103,10 +124,39 @@ def apply_context_update(context: BspuContext):
     context.chat_data.apply_after_update.clear()
 
 
-def seq_to_md_list(items: Iterable[str] | None, delim: str = "- {}\n") -> str:
+def seq_to_md_list(items: Iterable[str] | None, delim: str = "• {}\n") -> str:
     return "".join([delim.format(item) for item in items]) if items else ""
 
 
+def pull_chat_data(app: Application, user_id: int) -> ChatContext:
+    return app.chat_data[user_id]
+
+
+# Minimise
+async def clear_outdated_reserved_questions(context: BspuContext):
+    if TYPE_CHECKING:
+        assert context.chat_data is not None
+
+    if not context.chat_data.user or not context.chat_data.representing_department:
+        return
+
+    for admin_id, [_, reserved_date] in context.bot_data.reserved_questions.items():
+        if (reserved_date - datetime.now()).total_seconds() / 60.0 > constants.MAX_LEASE_MINUTES:  # noqa: DTZ005
+            admin = assert_not_none(await Admin.pull(admin_id))
+            assert admin.user_id is not None
+
+            if (
+                context.chat_data.representing_department != "all"
+                and context.chat_data.representing_department
+                != context.application.chat_data[admin.user_id].representing_department
+            ):
+                continue
+
+            context.bot_data.reserved_questions.pop(admin_id)
+            await force_admin_out_of_answering_question(context.application, admin.user_id)
+
+
+# TODO: Generalise key and text creation
 def selector_keyboard[T](
     context: BspuContext,
     items: Iterable[T],

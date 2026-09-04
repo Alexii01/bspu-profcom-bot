@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 if TYPE_CHECKING:
@@ -12,9 +11,7 @@ from bspu_profcom_bot_hayeu.callback import Callback
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
 
 
-def _build_buttons(
-    value: Mapping[str, Any], callbacks: Mapping[str, Callback]
-) -> dict[str, Callback]:
+def _build_buttons(value: dict[str, Any], callbacks: dict[str, Callback]) -> dict[str, Callback]:
     return {
         button_key: callbacks[button_value] for button_key, button_value in value["buttons"].items()
     }
@@ -22,12 +19,12 @@ def _build_buttons(
 
 class Keyboard(NamedTuple):
     type: Literal["inline", "reply"]
-    buttons: Mapping[str, Callback]
+    buttons: dict[str, Callback]
 
     @staticmethod
     def load(
         filepath: FileDescriptorOrPath,
-        callbacks: Mapping[str, Callback],
+        callbacks: dict[str, Callback],
         path: str | None = None,
     ) -> dict[str, Keyboard]:
         """Loads data from `filepath` file, first traversing nodes from `path`
@@ -43,15 +40,15 @@ class Keyboard(NamedTuple):
             for key, value in loader[path].items()
         }
 
-    def __gen_reply_keyboard(self, buttons_text: Mapping[str, str]) -> ReplyKeyboardMarkup:
+    def __gen_reply_keyboard(self, buttons_text: dict[str, str]) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup.from_column(
             [buttons_text[key] for key in self.buttons], one_time_keyboard=True
         )
 
     def __gen_inline_keyboard(
         self,
-        buttons_text: Mapping[str, str],
-        button_params: Mapping[str, Mapping[str, Any]] | None = None,
+        buttons_text: dict[str, str],
+        button_params: dict[str, dict[str, Any]] | None = None,
     ) -> tuple[InlineKeyboardMarkup, dict[str, Callback]]:
         representation = {
             key: hashlib.sha256(buttons_text[key].encode("utf-8")).hexdigest()
@@ -76,8 +73,8 @@ class Keyboard(NamedTuple):
 
     def __call__(
         self,
-        buttons: Mapping[str, str],
-        inline_button_params: Mapping[str, Mapping[str, Any]] | None = None,
+        buttons: dict[str, str],
+        inline_button_params: dict[str, dict[str, Any]] | None = None,
     ) -> ReplyKeyboardMarkup | tuple[InlineKeyboardMarkup, dict[str, Callback]]:
         if self.type == "inline":
             return self.__gen_inline_keyboard(buttons, inline_button_params)

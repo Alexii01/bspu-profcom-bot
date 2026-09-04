@@ -29,7 +29,7 @@ async def admin_login(update: Update, context: BspuContext):
         return
 
     context.chat_data.user = admin
-    await main_menu(update, context)
+    await admin_main_menu(update, context)
 
 
 async def process_password(update: Update, context: BspuContext):
@@ -94,7 +94,7 @@ async def admin_first_login(update: Update, context: BspuContext):
 
 
 @cr.register("admin_main_menu")
-async def main_menu(update: Update, context: BspuContext):
+async def admin_main_menu(update: Update, context: BspuContext):
     await messaging.delete_all_messages(update, context)
     await _main_menu(update, context, "admin_menu")
 

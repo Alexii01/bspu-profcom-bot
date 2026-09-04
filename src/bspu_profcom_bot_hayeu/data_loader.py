@@ -16,14 +16,14 @@ class DataLoader(UserDict):
         self,
         name: str,
         filepath: FileDescriptorOrPath,
-        new_data: dict[Any, Any] | None = None,
+        new_data: dict | None = None,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.name = name
         self.associated_file = filepath
-        self.data = new_data if new_data else {}
+        self.data = new_data or {}
 
         if self.associated_file:
             self.load()

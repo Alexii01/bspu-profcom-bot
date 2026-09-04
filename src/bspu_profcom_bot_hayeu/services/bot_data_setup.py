@@ -8,7 +8,7 @@ from bspu_profcom_bot_hayeu.data_loader import DataLoader
 async def post_init(app: Application):
     assert isinstance(app.bot_data, context.BotContext)
 
-    app.bot_data.callbacks = CALLBACKS
+    app.bot_data.callbacks = dict(CALLBACKS)
 
     app.bot_data.buttons = DataLoader("button_loader", constants.TextPath)["buttons"]
     app.bot_data.buttons_inv = {v: k for k, v in app.bot_data.buttons.items()}

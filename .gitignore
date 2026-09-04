@@ -1,15 +1,18 @@
-.vs*
+# vscode folder
+.vs*/
+
+# Deployment files
 .venv/
 *__pycache__*
 
-persistence*
+# Local files
 *.json*
 *.log*
 *.txt*
 *.ini*
 *.env*
 *.bin*
-*.ipynb*
 *.db*
 
-.local*
+# Manual override
+*.local*

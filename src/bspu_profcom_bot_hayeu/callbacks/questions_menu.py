@@ -50,7 +50,7 @@ async def save_question(department: Department, update: Update, context: BspuCon
         )
         return
 
-    context.chat_data.asked_questions = await Question.new(
+    await Question.new(
         update.effective_user.id,
         department.id,
         update.message.date,

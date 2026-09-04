@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 from telegram import Update
 
-
 from bspu_profcom_bot_hayeu import constants
 from bspu_profcom_bot_hayeu.callback_registry import CallbackRegistry
 from bspu_profcom_bot_hayeu.callbacks import admin_menu, common

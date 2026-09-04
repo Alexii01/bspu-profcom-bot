@@ -41,8 +41,10 @@ if __name__ == "__main__":
     logging.getLogger("aiosqlite").setLevel(logging.WARNING)
     logging.getLogger("telegram.ext").setLevel(logging.INFO)
 
+    logger = logging.getLogger(__name__)
+
     # Bot setup
-    logging.info("Starting up")
+    logger.info("Starting up")
 
     if not load_dotenv():
         raise RuntimeError(".env not found!")
@@ -79,5 +81,5 @@ if __name__ == "__main__":
     )
     app.add_error_handler(handlers.error_handler)
 
-    logging.info("Beginning to poll")
+    logger.info("Beginning to poll")
     app.run_polling(poll_interval=0.1, allowed_updates=Update.ALL_TYPES)

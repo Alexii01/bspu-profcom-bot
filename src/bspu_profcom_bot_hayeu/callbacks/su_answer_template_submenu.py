@@ -133,19 +133,6 @@ async def pls_confirm_template_text_update(
         assert update.message.text is not None
         assert context.chat_data is not None
 
-    # if len(update.message.text) > InlineKeyboardButtonLimit.MAX_COPY_TEXT:
-    #     msg_text = context.bot_data.texts["answer_template_menu_new_name_too_long"]
-    #     await common.choice(
-    #         update,
-    #         context,
-    #         msg_text(InlineKeyboardButtonLimit.MAX_COPY_TEXT),
-    #         msg_text.parse_mode,
-    #         "su_admin_settings_edit_template_name",
-    #         partial(get_new_template_text, template),
-    #         "go_back",
-    #         su_answer_template_submenu,
-    #     )
-
     await messaging.update_last_or_send_msg(
         update, context, text=update.message.text_html_urled, parse_mode=ParseMode.HTML
     )

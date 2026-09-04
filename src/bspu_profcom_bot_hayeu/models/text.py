@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -10,7 +9,7 @@ from telegram.constants import ParseMode
 from bspu_profcom_bot_hayeu.data_loader import DataLoader
 
 
-def _resolve_parse_mode(value: Mapping[str, str]) -> ParseMode | None:
+def _resolve_parse_mode(value: dict[str, str]) -> ParseMode | None:
     match value["parse_mode"]:
         case "html":
             return ParseMode.HTML
@@ -40,7 +39,7 @@ class Text:
             for key, value in loader[path].items()
         }
 
-    def __verify_variables(self, vars: Mapping) -> bool:
+    def __verify_variables(self, vars: dict) -> bool:
         """Checks if the provided dictionary contains all object needed to fill in the template"""
 
         return not self.expected_variables or all(var in vars for var in self.expected_variables)

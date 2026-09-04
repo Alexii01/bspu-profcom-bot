@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from telegram import (
+    Bot,
     Message,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -11,7 +12,7 @@ from telegram import (
 )
 from telegram.constants import ParseMode
 
-from bspu_profcom_bot_hayeu.context import BspuContext
+from bspu_profcom_bot_hayeu.context import BspuContext, ChatContext
 
 from .messaging_helpers import (
     apply_context_update,
@@ -38,17 +39,22 @@ async def update_last_msg(
     if context.chat_data.last_keyboard_type == "reply" or isinstance(
         kwargs.get("reply_markup", None), ReplyKeyboardMarkup
     ):
+        # TODO: <-- Extract into a function _delete_last_messages
         kwargs.setdefault("text", context.chat_data.last_messages[-1].text_html_urled)
         kwargs.setdefault("parse_mode", ParseMode.HTML)
         await delete_all_messages(update, context)
+        # -->
 
         await send_msg(update, context, text_alias, keyboard_alias, *args, **kwargs)
+
     else:
+        # TODO: <-- Extract into a function _edit_last_msg
         msg = await context.chat_data.last_messages[-1].edit_text(*args, **kwargs)
         assert isinstance(msg, Message)
 
         apply_context_update(context)
         context.chat_data.last_messages[-1] = msg
+        # -->
 
 
 async def send_msg(
@@ -87,10 +93,17 @@ async def update_last_or_send_msg(
         assert context.chat_data is not None
 
     if update.message:
+        # if a user sends a message, abandon all previous conversation,
+        # continue with a new message like so:
+        # (bot_msg)
+        #               (user_msg)
+        # (new_bot_msg)
         await clear_keyboard(update, context)
         context.chat_data.msg_clear()
 
     if context.chat_data.last_messages:
+        # if multiple messages were sent by the bot, delete all but one and
+        # edit only the remaining one
         while len(context.chat_data.last_messages) > 1:
             await delete_message_at_index(update, context, 0)
 
@@ -99,25 +112,31 @@ async def update_last_or_send_msg(
         await send_msg(update, context, text_alias, keyboard_alias, *args, **kwargs)
 
 
-async def send_stray(context: BspuContext, chat_id: int, text: str, parse_mode: ParseMode | None):
+async def send_stray(
+    bot: Bot, chat_id: int, text: str, parse_mode: ParseMode | None, **kwargs
+) -> Message:
     """Wrapper for `context.bot.send_message` used for sending untracked messages"""
-    await context.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+    return await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode, **kwargs)
 
 
-async def delete_all_messages(update: Update, context: BspuContext):
+async def delete_all_messages(update: Update | None, context: BspuContext):
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
-    if context.chat_data.last_keyboard_type == "reply":
+    if update and context.chat_data.last_keyboard_type == "reply":
         await clear_keyboard(update, context)
 
+    await mini_delete_all_messages(context.chat_data)
+
+
+async def mini_delete_all_messages(chat_data: ChatContext):
     try:
-        for msg in context.chat_data.last_messages:
+        for msg in chat_data.last_messages:
             await msg.delete()
     except telegram_error.BadRequest:
         pass
     finally:
-        context.chat_data.msg_clear()
+        chat_data.msg_clear()
 
 
 async def delete_message_at_index(update: Update, context: BspuContext, index: int = -1):
