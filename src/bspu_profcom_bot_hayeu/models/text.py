@@ -1,8 +1,4 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from _typeshed import FileDescriptorOrPath
 
 from telegram.constants import ParseMode
 
@@ -28,7 +24,7 @@ class Text:
     expected_variables: list[str] | None
 
     @staticmethod
-    def load(filepath: FileDescriptorOrPath, path: str | None = None) -> dict[str, Text]:
+    def load(filepath: str, path: str | None = None) -> dict[str, "Text"]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
         Example: `Text.load("appdata.json", "application.messages.text")`"""

@@ -17,7 +17,7 @@ class CallbackRegistry:
 
         return decorator
 
-    def merge(self, other: CallbackRegistry) -> None:
+    def merge(self, other: "CallbackRegistry") -> None:
         collisions = self._actions.keys() & other._actions.keys()
         if collisions:
             raise ValueError(f"Callback name collision(s) on merge: {collisions}")

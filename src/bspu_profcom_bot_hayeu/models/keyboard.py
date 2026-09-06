@@ -1,8 +1,5 @@
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple
-
-if TYPE_CHECKING:
-    from _typeshed import FileDescriptorOrPath
 import hashlib
+from typing import Any, Literal, NamedTuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.constants import InlineKeyboardButtonLimit
@@ -23,10 +20,10 @@ class Keyboard(NamedTuple):
 
     @staticmethod
     def load(
-        filepath: FileDescriptorOrPath,
+        filepath: str,
         callbacks: dict[str, Callback],
         path: str | None = None,
-    ) -> dict[str, Keyboard]:
+    ) -> dict[str, "Keyboard"]:
         """Loads data from `filepath` file, first traversing nodes from `path`
 
         Example: `Keyboard.load("appdata.json", actions, views, "application.keyboards")`"""

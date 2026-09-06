@@ -44,7 +44,7 @@ class Question(DbModel):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @staticmethod
-    def _from_row(row: aiosqlite.Row) -> Question:
+    def _from_row(row: aiosqlite.Row) -> "Question":
         return Question(
             id=UUID(row["id"]),
             user_id=row["user_id"],
@@ -59,11 +59,11 @@ class Question(DbModel):
         )
 
     @staticmethod
-    def from_row(row: aiosqlite.Row | None) -> Question | None:
+    def from_row(row: aiosqlite.Row | None) -> "Question | None":
         return Question._from_row(row) if row else None
 
     @staticmethod
-    def from_rows(rows: Iterable[aiosqlite.Row]) -> list[Question]:
+    def from_rows(rows: Iterable[aiosqlite.Row]) -> list["Question"]:
         return [Question._from_row(row) for row in rows]
 
     def to_row(self: Self) -> dict[str, Any]:
@@ -85,7 +85,7 @@ class Question(DbModel):
         message: str,
         answered_by: int | None,
         answered_date: datetime | None,
-    ) -> Question:
+    ) -> "Question":
         """Creates a question and inserts it into db"""
         instance = Question(
             id=uuid4(),
@@ -100,7 +100,7 @@ class Question(DbModel):
         return instance
 
     @staticmethod
-    async def pull(id: UUID) -> Question | None:
+    async def pull(id: UUID) -> "Question | None":
         """Reads a question from db"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
@@ -111,7 +111,7 @@ class Question(DbModel):
             return Question.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_from_user(user_id: int) -> list[Question]:
+    async def pull_from_user(user_id: int) -> list["Question"]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
@@ -121,7 +121,7 @@ class Question(DbModel):
             return Question.from_rows(await cursor.fetchall())
 
     @staticmethod
-    async def _pull_oldest(offset: int = 0) -> Question | None:
+    async def _pull_oldest(offset: int = 0) -> "Question | None":
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
@@ -136,7 +136,7 @@ class Question(DbModel):
             return Question.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def _pull_oldest_from_dept(dept: UUID, offset: int = 0) -> Question | None:
+    async def _pull_oldest_from_dept(dept: UUID, offset: int = 0) -> "Question | None":
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
@@ -159,8 +159,8 @@ class Question(DbModel):
     @staticmethod
     async def _skip_reserved_questions(
         avoid_ids: set[UUID] | None,
-        request_func: Callable[[int], Coroutine[Any, Any, Question | None]],
-    ) -> Question | None:
+        request_func: Callable[[int], Coroutine[Any, Any, "Question | None"]],
+    ) -> "Question | None":
         offset = 0
         q = await request_func(offset)
 
@@ -174,7 +174,7 @@ class Question(DbModel):
     @staticmethod
     async def pull_oldest(
         dept: UUID | None = None, avoid_ids: set[UUID] | None = None
-    ) -> Question | None:
+    ) -> "Question | None":
         """Pulls oldest question"""
         request_func = (
             partial(Question._pull_oldest_from_dept, dept) if dept else Question._pull_oldest
@@ -190,7 +190,7 @@ class Question(DbModel):
             )
             await conn.commit()
 
-    async def insert(question: Self) -> Question:
+    async def insert(question: Self) -> "Question":
         """Insert question into database"""
         if not question.in_db:
             async with aiosqlite.connect(db) as conn:
@@ -206,7 +206,7 @@ class Question(DbModel):
             new_self = dataclasses.replace(question, in_db=True)
         return new_self
 
-    async def redirect(self: Self, dept: UUID) -> Question:
+    async def redirect(self: Self, dept: UUID) -> "Question":
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
                 await conn.execute(
@@ -220,7 +220,7 @@ class Question(DbModel):
         new_self = dataclasses.replace(self, department_id=dept)
         return new_self
 
-    async def delete(self: Self) -> Question:
+    async def delete(self: Self) -> "Question":
         if self.in_db:
             await Question.delete_by_id(self.id)
             new_self = dataclasses.replace(self, in_db=False)

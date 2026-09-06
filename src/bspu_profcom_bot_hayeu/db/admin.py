@@ -42,7 +42,7 @@ class Admin(DbModel):
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     @staticmethod
-    def _from_row_with_passwd_hash(row: aiosqlite.Row) -> tuple[Admin, bytes]:
+    def _from_row_with_passwd_hash(row: aiosqlite.Row) -> tuple["Admin", bytes]:
         return (
             Admin(
                 id=UUID(row["id"]),
@@ -55,7 +55,7 @@ class Admin(DbModel):
         )
 
     @staticmethod
-    def _from_row(row: aiosqlite.Row) -> Admin:
+    def _from_row(row: aiosqlite.Row) -> "Admin":
         return Admin(
             id=UUID(row["id"]),
             public_name=row["public_name"],
@@ -65,14 +65,14 @@ class Admin(DbModel):
         )
 
     @staticmethod
-    def from_row(row: aiosqlite.Row | None) -> Admin | None:
+    def from_row(row: aiosqlite.Row | None) -> "Admin | None":
         return Admin._from_row(row) if row else None
 
     @staticmethod
-    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable[Admin]:
+    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable["Admin"]:
         return [Admin._from_row(row) for row in rows]
 
-    def to_row(admin: Admin) -> dict[str, Any]:
+    def to_row(admin: "Admin") -> dict[str, Any]:
         return {
             "id": str(admin.id),
             "public_name": admin.public_name,
@@ -123,7 +123,7 @@ class Admin(DbModel):
         public_name: str | None = None,
         name_base: str = "",
         flags: constants.AdminFlags | None = None,
-    ) -> tuple[Admin, str]:
+    ) -> tuple["Admin", str]:
         """Generates a password and initialises the fields with default values,
         then INSERTs into db. Returns admin and password.
 
@@ -158,7 +158,7 @@ class Admin(DbModel):
         return (new_self, passw)
 
     @staticmethod
-    async def pull(id: UUID) -> Admin | None:
+    async def pull(id: UUID) -> "Admin | None":
         """Returns an admin associated with a user"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
@@ -168,7 +168,7 @@ class Admin(DbModel):
             return Admin.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_by_user_id(user_id: int) -> Admin | None:
+    async def pull_by_user_id(user_id: int) -> "Admin | None":
         """Returns an admin associated with a user"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
@@ -182,7 +182,7 @@ class Admin(DbModel):
     async def pull_by_flags(
         with_flags: constants.AdminFlags | None = None,
         without_flags: constants.AdminFlags | None = None,
-    ) -> Iterable[Admin] | None:
+    ) -> Iterable["Admin"] | None:
         async with aiosqlite.connect(db) as conn:
             [cmd, args] = Admin._resolve_flags_pull("*", with_flags, without_flags)
             conn.row_factory = aiosqlite.Row
@@ -190,7 +190,7 @@ class Admin(DbModel):
             return Admin.from_rows(await cursor.fetchall())
 
     @staticmethod
-    async def unauthorised_with_passwd(password: str) -> Admin | None:
+    async def unauthorised_with_passwd(password: str) -> "Admin | None":
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(
@@ -213,7 +213,7 @@ class Admin(DbModel):
 
             return [row[0] for row in (await cursor.fetchall())]
 
-    async def set_user_id(self, user_id: int) -> Admin:
+    async def set_user_id(self, user_id: int) -> "Admin":
         if self.user_id or not self.in_db:
             return self
 
@@ -231,7 +231,7 @@ class Admin(DbModel):
         new_self = dataclasses.replace(self, user_id=user_id)
         return new_self
 
-    async def rename(self, name: str) -> Admin:
+    async def rename(self, name: str) -> "Admin":
         """Update admin's name in db"""
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
@@ -246,7 +246,7 @@ class Admin(DbModel):
         new_self = dataclasses.replace(self, public_name=name)
         return new_self
 
-    async def delete(self) -> Admin:
+    async def delete(self) -> "Admin":
         """Delete admin from db"""
         if self.in_db:
             async with aiosqlite.connect(db) as conn:
@@ -269,12 +269,12 @@ class Admin(DbModel):
                 )
                 await conn.commit()
 
-    async def add_flags(self, flags: constants.AdminFlags) -> Admin:
+    async def add_flags(self, flags: constants.AdminFlags) -> "Admin":
         new_self = dataclasses.replace(self, flags=(self.flags | flags))
         await new_self._update_flags()
         return new_self
 
-    async def remove_flags(self, flags: constants.AdminFlags) -> Admin:
+    async def remove_flags(self, flags: constants.AdminFlags) -> "Admin":
         new_self = dataclasses.replace(self, flags=(self.flags & ~flags))
         await new_self._update_flags()
         return new_self

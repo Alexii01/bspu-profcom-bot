@@ -10,10 +10,12 @@ async def post_init(app: Application):
 
     app.bot_data.callbacks = dict(CALLBACKS)
 
-    app.bot_data.buttons = DataLoader("button_loader", constants.TextPath)["buttons"]
+    app.bot_data.buttons = DataLoader("button_loader", str(constants.TextPath))["buttons"]
     app.bot_data.buttons_inv = {v: k for k, v in app.bot_data.buttons.items()}
-    app.bot_data.texts = models.Text.load(constants.TextPath, "messages")
-    app.bot_data.keyboards = models.Keyboard.load(constants.KeyboardsPath, app.bot_data.callbacks)
+    app.bot_data.texts = models.Text.load(str(constants.TextPath), "messages")
+    app.bot_data.keyboards = models.Keyboard.load(
+        str(constants.KeyboardsPath), app.bot_data.callbacks
+    )
 
 
 async def post_shutdown(app: Application):

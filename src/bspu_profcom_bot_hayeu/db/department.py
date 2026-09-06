@@ -29,25 +29,25 @@ class Department(DbModel):
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def to_row(dept: Department) -> dict[str, Any]:
+    def to_row(dept: "Department") -> dict[str, Any]:
         return {"id": str(dept.id), "name": dept.name, "plan_removal": dept.plan_removal}
 
     @staticmethod
-    def _from_row(row: aiosqlite.Row) -> Department:
+    def _from_row(row: aiosqlite.Row) -> "Department":
         return Department(
             id=UUID(row["id"]), name=row["name"], plan_removal=bool(row["plan_removal"]), in_db=True
         )
 
     @staticmethod
-    def from_row(row: aiosqlite.Row | None) -> Department | None:
+    def from_row(row: aiosqlite.Row | None) -> "Department | None":
         return Department._from_row(row) if row else None
 
     @staticmethod
-    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable[Department]:
+    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable["Department"]:
         return [Department._from_row(row) for row in rows]
 
     @staticmethod
-    async def new(name: str) -> Department:
+    async def new(name: str) -> "Department":
         instance = Department(
             id=uuid4(),
             name=name,
@@ -70,7 +70,7 @@ class Department(DbModel):
         return f"SELECT {fields} FROM {constants.DepartmentsTable} WHERE plan_removal = {int(plan_removal)}"
 
     @staticmethod
-    async def pull(id: UUID) -> Department | None:
+    async def pull(id: UUID) -> "Department | None":
         """Reads a department from db"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
@@ -80,21 +80,21 @@ class Department(DbModel):
             return Department.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_all_active() -> Iterable[Department]:
+    async def pull_all_active() -> Iterable["Department"]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(Department._resolve_pull_cmd("*", False))
             return Department.from_rows(await cursor.fetchall())
 
     @staticmethod
-    async def pull_to_be_removed() -> Iterable[Department]:
+    async def pull_to_be_removed() -> Iterable["Department"]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(Department._resolve_pull_cmd("*", True))
             return Department.from_rows(await cursor.fetchall())
 
     @staticmethod
-    async def pull_all() -> Iterable[Department]:
+    async def pull_all() -> Iterable["Department"]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(f"SELECT * FROM {constants.DepartmentsTable}")
@@ -123,7 +123,7 @@ class Department(DbModel):
 
             return bool((await cursor.fetchone())[0])  # type:ignore
 
-    async def rename(self: Self, new_name: str) -> Department:
+    async def rename(self: Self, new_name: str) -> "Department":
         if self.plan_removal:
             new_self = dataclasses.replace(self, plan_removal=False, name=new_name)
         else:
@@ -142,7 +142,7 @@ class Department(DbModel):
 
         return new_self
 
-    async def set_plan_removal(self: Self, val: bool) -> Department:
+    async def set_plan_removal(self: Self, val: bool) -> "Department":
         if self.plan_removal == val:
             return self
 
@@ -160,7 +160,7 @@ class Department(DbModel):
 
         return new_self
 
-    async def delete(self: Self) -> Department:
+    async def delete(self: Self) -> "Department":
         if not self.in_db:
             return self
 
@@ -174,7 +174,7 @@ class Department(DbModel):
 
         return new_self
 
-    async def delete_if_safe(self: Self) -> Department:
+    async def delete_if_safe(self: Self) -> "Department":
         if not self.in_db or not self.plan_removal:
             return self
 

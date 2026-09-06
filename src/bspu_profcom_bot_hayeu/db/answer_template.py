@@ -29,23 +29,23 @@ class AnswerTemplate(DbModel):
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def to_row(template: AnswerTemplate) -> dict[str, Any]:
+    def to_row(template: "AnswerTemplate") -> dict[str, Any]:
         return {"id": str(template.id), "name": template.name, "text": template.text}
 
     @staticmethod
-    def _from_row(row: aiosqlite.Row) -> AnswerTemplate:
+    def _from_row(row: aiosqlite.Row) -> "AnswerTemplate":
         return AnswerTemplate(id=UUID(row["id"]), name=row["name"], text=row["text"], in_db=True)
 
     @staticmethod
-    def from_row(row: aiosqlite.Row | None) -> AnswerTemplate | None:
+    def from_row(row: aiosqlite.Row | None) -> "AnswerTemplate | None":
         return AnswerTemplate._from_row(row) if row else None
 
     @staticmethod
-    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable[AnswerTemplate]:
+    def from_rows(rows: Iterable[aiosqlite.Row]) -> Iterable["AnswerTemplate"]:
         return [AnswerTemplate._from_row(row) for row in rows]
 
     @staticmethod
-    async def new(name: str, text: str) -> AnswerTemplate:
+    async def new(name: str, text: str) -> "AnswerTemplate":
         instance = AnswerTemplate(
             id=uuid4(),
             name=name,
@@ -64,7 +64,7 @@ class AnswerTemplate(DbModel):
         return instance
 
     @staticmethod
-    async def pull(id: UUID) -> AnswerTemplate | None:
+    async def pull(id: UUID) -> "AnswerTemplate | None":
         """Reads a department from db"""
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
@@ -75,13 +75,13 @@ class AnswerTemplate(DbModel):
             return AnswerTemplate.from_row(await cursor.fetchone())
 
     @staticmethod
-    async def pull_all() -> Iterable[AnswerTemplate]:
+    async def pull_all() -> Iterable["AnswerTemplate"]:
         async with aiosqlite.connect(db) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute(f"SELECT * FROM {constants.AnswerTemplatesTable}")
             return AnswerTemplate.from_rows(await cursor.fetchall())
 
-    async def rename(self: Self, new_name: str) -> AnswerTemplate:
+    async def rename(self: Self, new_name: str) -> "AnswerTemplate":
         new_self = dataclasses.replace(self, name=new_name)
 
         if self.in_db:
@@ -97,7 +97,7 @@ class AnswerTemplate(DbModel):
 
         return new_self
 
-    async def edit_text(self: Self, new_text: str) -> AnswerTemplate:
+    async def edit_text(self: Self, new_text: str) -> "AnswerTemplate":
         new_self = dataclasses.replace(self, text=new_text)
 
         if self.in_db:
@@ -113,7 +113,7 @@ class AnswerTemplate(DbModel):
 
         return new_self
 
-    async def delete(self: Self) -> AnswerTemplate:
+    async def delete(self: Self) -> "AnswerTemplate":
         if not self.in_db:
             return self
 
