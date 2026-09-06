@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling >= 1.26"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.10,<0.13"]
+build-backend = "uv_build"
 
 [project]
 name = "bspu-profcom-bot-hayeu"
