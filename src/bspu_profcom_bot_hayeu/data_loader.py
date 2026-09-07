@@ -26,14 +26,14 @@ class DataLoader(UserDict):
             self.load()
 
     def load(self):
-        """Reads data from `filepath` or `DataLoader.associated_file`"""
+        """Reads data from `DataLoader.associated_file`"""
 
         with open(file=self.associated_file, mode="r", encoding="utf-8") as data_file:
             logger.info(f"{self.name} load from {self.associated_file}")
             self.data = json.load(data_file)
 
     def dump(self):
-        """Dumps data to `filepath` or `DataLoader.associated_file`"""
+        """Dumps data to `DataLoader.associated_file`"""
         if self.data is None:
             return
 

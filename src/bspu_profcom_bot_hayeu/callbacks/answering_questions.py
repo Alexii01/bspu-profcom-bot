@@ -22,9 +22,6 @@ async def _get_oldest_question(context: BspuContext) -> Question | None:
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
-    if context.chat_data.skip_questions:
-        context.chat_data.skip_questions.clear()
-
     await messaging_helpers.clear_outdated_reserved_questions(context)
 
     repr_dept = (
@@ -35,7 +32,8 @@ async def _get_oldest_question(context: BspuContext) -> Question | None:
 
     return await Question.pull_oldest(
         dept=repr_dept,
-        avoid_ids=context.chat_data.skip_questions,
+        avoid_ids=context.chat_data.skip_questions
+        | {question_id for _, [question_id, _] in context.bot_data.reserved_questions.items()},
     )
 
 
@@ -94,7 +92,7 @@ async def answer_question(question: Question, answer: str, update: Update, conte
     context.pop_reserved_question()
     await send_formatted_answer(question, answer, context)
 
-    await enter_question_answering_menu(update, context)
+    await select_new_question_and_show_menu(update, context)
 
 
 async def pls_verify_answer(
@@ -115,7 +113,7 @@ async def pls_verify_answer(
             "inline",
             {
                 "continue": partial(answer_question, question, answer),
-                "go_back": context.bot_data.callbacks["enter_question_answering_menu"],
+                "go_back": context.bot_data.callbacks["select_new_question_and_show_menu"],
             },
         ),
     )
@@ -153,7 +151,7 @@ async def redirect_question(
         msg_text(old=old_dept_name, new=new_dept_name),
         msg_text.parse_mode,
         "okay",
-        context.bot_data.callbacks["enter_question_answering_menu"],
+        context.bot_data.callbacks["select_new_question_and_show_menu"],
     )
 
 
@@ -178,10 +176,9 @@ async def answer_menu_skip_question(update: Update, context: BspuContext):
     if TYPE_CHECKING:
         assert context.chat_data is not None
 
-    context.pop_reserved_question()
-    context.chat_data.skip_questions.add(context.reserved_question_id)
+    context.chat_data.skip_questions.add(context.pop_reserved_question())
 
-    await enter_question_answering_menu(update, context)
+    await select_new_question_and_show_menu(update, context)
 
 
 async def answer_with_template(template: AnswerTemplate, update: Update, context: BspuContext):
@@ -228,7 +225,17 @@ async def enter_question_answering_menu(update: Update, context: BspuContext):
         await common.pop_up_aliased(
             update, context, "admin_select_department_pls", "okay", admin_menu.admin_main_menu
         )
-        return
+
+    if context.chat_data.skip_questions:
+        context.chat_data.skip_questions.clear()
+
+    await select_new_question_and_show_menu(update, context)
+
+
+async def select_new_question_and_show_menu(update: Update, context: BspuContext):
+    if TYPE_CHECKING:
+        assert context.chat_data is not None
+        assert context.chat_data.user is not None
 
     question = await _get_oldest_question(context)
 
