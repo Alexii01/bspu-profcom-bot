@@ -100,12 +100,12 @@ class BspuContext(CallbackContext[ExtBot, None, ChatContext, BotContext]):
 
         return self.bot_data.reserved_questions[self.chat_data.user.id][0]
 
-    def pop_reserved_question(self):
+    def pop_reserved_question(self) -> UUID:
         if TYPE_CHECKING:
             assert self.chat_data is not None
             assert self.chat_data.user is not None
 
-        self.bot_data.reserved_questions.pop(self.chat_data.user.id)
+        return self.bot_data.reserved_questions.pop(self.chat_data.user.id)[0]
 
 
 class BotContextEncoder(JSONEncoder):
